@@ -1,5 +1,6 @@
 <?php
 
+#[AllowDynamicProperties]
 class WPFB_Item
 {
 
@@ -168,8 +169,10 @@ class WPFB_Item
             $desc = (trim($sort[1]) == "DESC");
         }
         $on = preg_replace('/[^0-9a-z_]/i', '', $on); //strip hacking
-        $comparer = $desc ? "return -strcmp(\$a->{$on},\$b->{$on});" : "return strcmp(\$a->{$on},\$b->{$on});";
-        usort($items, create_function('$a,$b', $comparer));
+        $sign = $desc ? -1 : 1;
+        usort($items, static function ($a, $b) use ($on, $sign) {
+            return $sign * strcmp((string) ($a->$on ?? ''), (string) ($b->$on ?? ''));
+        });
     }
 
     function GetEditUrl()
@@ -411,9 +414,12 @@ class WPFB_Item
          */
 
         self::$tpl_uid++;
-        $f = &$this;
-        $e = null; // extra data
-        return eval("return ($parsed_tpl);");
+        try {
+            $fn = WPFB_Compat::compileTemplate($parsed_tpl);
+        } catch (WPFB_TemplateError $ex) {
+            return esc_html(sprintf('Template %s is invalid: %s', $this->is_file ? 'file' : 'cat', $ex->getMessage()));
+        }
+        return $fn($this, null);
     }
 
     function GenTpl2($tpl_tag = null, $load_js = true, $extra_data = null)
@@ -431,7 +437,11 @@ class WPFB_Item
             $parsed_tpl = WPFB_Core::GetParsedTpl($this->is_file ? 'file' : 'cat', $tpl_tag);
             if (empty($parsed_tpl))
                 return "Template $type :: $tpl_tag does not exist!";
-            $tpl_funcs[$type][$tpl_tag] = WPFB_Core::CreateTplFunc($parsed_tpl);
+            try {
+                $tpl_funcs[$type][$tpl_tag] = WPFB_Core::CreateTplFunc($parsed_tpl);
+            } catch (WPFB_TemplateError $ex) {
+                return esc_html("Template $type :: $tpl_tag is invalid: " . $ex->getMessage());
+            }
         }
 
         self::$tpl_uid = (defined('DOING_AJAX') && DOING_AJAX) ? ($this->GetId() . '' . (round(microtime() * 1000) % 1000)) : (self::$tpl_uid + 1);
@@ -547,9 +557,9 @@ class WPFB_Item
      */
     function GetChildFilesFast($recursive = false)
     {
-        static $parent_walker = false;
-        if (!$parent_walker)
-            $parent_walker = create_function('&$f,$fid,$pid', 'if($f->file_category != $pid) $f = null;');
+        static $parent_walker = null;
+        if ($parent_walker === null)
+            $parent_walker = static function (&$f, $fid, $pid) { if ($f->file_category != $pid) $f = null; };
 
         if ($this->is_file)
             return array($this->GetId() => $this);

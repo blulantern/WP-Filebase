@@ -9,7 +9,7 @@ static function register() {
 	register_widget('WPFB_FileListWidget');
 }
 
-function CatTree(&$root_cat)
+static function CatTree(&$root_cat)
 {	
 	if(!$root_cat->CurUserCanAccess(true)) return;
 	echo '<li><a href="'.$root_cat->GetUrl().'">'.esc_html($root_cat->cat_name).'</a>';	

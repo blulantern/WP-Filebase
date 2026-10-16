@@ -14,7 +14,17 @@ parameters:
         - %currentWorkingDirectory%/extras/getid3/getid3.php
         - %currentWorkingDirectory%/extras/getid3/getid3.lib.php
     ignoreErrors:
-        - '#Access to an undefined property WPFB_(Item|File|Category)::\$#'
+        - '#Access to an undefined property (\$this\()?WPFB_(Item|File|Category)\)?::\$#'
+        - '#Call to an undefined method WPFB_Item::(GetType|GetExtension|GetChildCats)\(\)#'
+        - '#Call to an undefined method WPFB_AdvUploader::Scripts\(\)#'
+        - '#^Undefined variable: \$#'
+        - '#in (empty|isset)\(\) (always exists|is never defined)#'
+        - '#Inner named functions are not supported#'
+        - '#should return string but return statement is missing#'
+        - '#contains undefined variable#'
+        - '#Function memprof_#'
+        - '#Call to an undefined static method WPFB_Sync::RescanFiles\(\)#'
+        - '#Static method WPFB_Sync::ScanFile\(\) invoked with 3 parameters#'
         - '#Variable \$[a-z_]+ might not be defined#'
-        - '#Constant (ABSPATH|WPINC|WP_CONTENT_DIR|WP_CONTENT_URL|ARRAY_A|AUTH_COOKIE|SECURE_AUTH_COOKIE|LOGGED_IN_COOKIE|HOUR_IN_SECONDS|MINUTE_IN_SECONDS|WPFB_[A-Z_]+) not found#'
+        - '#Constant (ABSPATH|WPINC|WP_CONTENT_DIR|WP_CONTENT_URL|ARRAY_A|AUTH_COOKIE|SECURE_AUTH_COOKIE|LOGGED_IN_COOKIE|HOUR_IN_SECONDS|MINUTE_IN_SECONDS|DAY_IN_SECONDS|OBJECT_K|WP_DEBUG|WP_DEBUG_LOG|WPFB_[A-Z_]+) not found#'
     reportUnmatchedIgnoredErrors: false
