@@ -266,7 +266,7 @@ class WPFB_FileListWidget extends WP_Widget {
 		//$instance['tpl_parsed']
 		//WPFB_FileListWidget
 		
-		$tpl_func = WPFB_Core::CreateTplFunc($instance['tpl_parsed']);
+		$tpl_func = WPFB_Compat::compileTemplateOrError($instance['tpl_parsed'], 'file list widget');
 		echo '<ul>';
 		foreach($files as $file){
 			echo '<li>',($tpl_func($file)),'</li>';

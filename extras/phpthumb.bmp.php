@@ -762,12 +762,12 @@ class phpthumb_bmp {
 		$im = $this->PlotPixelsGD($BMPinfo['bmp']);
 		if (headers_sent()) {
 			echo 'plotted '.($BMPinfo['resolution_x'] * $BMPinfo['resolution_y']).' pixels in '.(time() - $starttime).' seconds<BR>';
-			ImageDestroy($im);
+			unset($im); // imagedestroy() deprecated in PHP 8.5
 			exit;
 		} else {
 			header('Content-Type: image/png');
 			ImagePNG($im);
-			ImageDestroy($im);
+			unset($im); // imagedestroy() deprecated in PHP 8.5
 			return true;
 		}
 		return false;

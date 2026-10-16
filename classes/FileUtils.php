@@ -216,7 +216,7 @@ class WPFB_FileUtils
             $b_lft, $b_top, imagesx($img) - $b_lft - $b_rt, imagesy($img) - $b_top - $b_btm
         );
 
-        if(is_string($img_in)) imagedestroy($img);
+        // imagedestroy() is a no-op since PHP 8.0 and deprecated in 8.5; GD images are freed by the GC.
 
         return $res;
     }

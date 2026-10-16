@@ -23,6 +23,7 @@ if (is_string($wp_tests) && $wp_tests !== '' && is_dir($wp_tests)) {
 }
 
 // ---- Unit mode -------------------------------------------------------------
+error_reporting(E_ALL); // the CLI php.ini masks E_DEPRECATED; the suite must see PHP 8 deprecations
 define('WPFB', 'wpfb');
 define('WPFB_VERSION', '0.4.0-test');
 define('WPFB_PLUGIN_ROOT', dirname(__DIR__) . '/');
@@ -41,6 +42,13 @@ if (!function_exists('esc_sql')) {
 }
 if (!function_exists('__')) {
     function __($t, $d = 'default') { return $t; }
+}
+if (!function_exists('esc_html')) {
+    function esc_html($t) { return htmlspecialchars((string) $t, ENT_QUOTES, 'UTF-8'); }
+}
+// WPFB_FileUtils requires wp-admin/includes/file.php at load; point ABSPATH at the enclosing WordPress install when there is one.
+if (!defined('ABSPATH') && is_file(dirname(__DIR__, 4) . '/wp-load.php')) {
+    define('ABSPATH', dirname(__DIR__, 4) . '/');
 }
 if (!function_exists('home_url')) {
     function home_url($p = '') { return 'http://example.test/' . ltrim($p, '/'); }

@@ -45,7 +45,7 @@ static function Schema()
 
 
 	if(!$isApache) {
-		$nginx_conf = "<pre>location /" . ltrim(WPFB_Core::$settings->upload_path, '/') . " {\n\tdeny all;\n\treturn 403;\n}\n</pre>";
+		$nginx_conf = "<pre>location /" . ltrim((string) (WPFB_Core::$settings->upload_path ?? ''), '/') . " {\n\tdeny all;\n\treturn 403;\n}\n</pre>";
 		$protect_instructions = "<br><b>Please add the following rules to your nginx config file to disable direct file access:</b><br>$nginx_conf";
 	}
 	

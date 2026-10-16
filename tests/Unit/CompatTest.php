@@ -46,6 +46,23 @@ final class CompatTest extends TestCase
         WPFB_Compat::compileTemplate("'unterminated");
     }
 
+    public function test_compile_template_or_error_returns_working_closure_for_valid_template(): void
+    {
+        $f = (object) array('name' => 'x');
+        $fn = WPFB_Compat::compileTemplateOrError("'<i>'.\$f->name.'</i>'", 'file list widget');
+        $this->assertSame('<i>x</i>', $fn($f));
+    }
+
+    public function test_compile_template_or_error_returns_inline_message_closure_for_broken_template(): void
+    {
+        $fn = WPFB_Compat::compileTemplateOrError("'unterminated", 'file list widget');
+        $this->assertInstanceOf(Closure::class, $fn);
+        $out = $fn(new stdClass());
+        $this->assertStringContainsString('file list widget', $out);
+        $this->assertStringContainsString('is invalid', $out);
+        $this->assertStringNotContainsString('<', $out, 'message is HTML-escaped');
+    }
+
     public function test_is_gd_image(): void
     {
         $img = imagecreatetruecolor(2, 2);
