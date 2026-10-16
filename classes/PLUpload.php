@@ -51,7 +51,7 @@ if ( $u < 0 ) {
 do_action('pre-upload-ui');
 
 $plupload_init = array(
-	'runtimes' => 'html5,silverlight,flash,html4',
+	'runtimes' => 'html5,html4',
 	'browse_button' => 'plupload-browse-button',
 	'container' => 'plupload-upload-ui',
 	'drop_element' => 'drag-drop-area',
@@ -59,8 +59,6 @@ $plupload_init = array(
 	'multiple_queues' => false,
 	'max_file_size' => $max_upload_size.'b',
 	'url' => add_query_arg('wpfb_action', 'upload', WPFB_Core::$ajax_url_public),
-	'flash_swf_url' => includes_url('js/plupload/plupload.flash.swf'),
-	'silverlight_xap_url' => includes_url('js/plupload/plupload.silverlight.xap'),
 	'filters' => array( array('title' => __( 'Allowed Files' ), 'extensions' => '*') ),
 	'multipart' => true,
 	'urlstream_upload' => true,
@@ -77,7 +75,6 @@ var resize_height = 1024, resize_width = 1024, // this is for img resizing (not 
 wpUploaderInit = <?php echo json_encode($plupload_init); ?>;
 </script>
 
-<input type="hidden" id="file_flash_upload" name="file_flash_upload" value="0" />
 
 <div id="plupload-upload-ui" class="hide-if-no-js">
 <?php do_action('pre-plupload-upload-ui'); // hook change, old name: 'pre-flash-upload-ui' ?>

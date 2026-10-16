@@ -92,7 +92,7 @@ public function Init($cotainer_id, $browser_btn_id='', $error_el_id=null, $drop_
 		self::PrintScripts();
 	
 $plupload_init = array(
-	'runtimes' => 'html5,gears,silverlight,flash,html4',
+	'runtimes' => 'html5,html4',
 	'browse_button' => $browser_btn_id,
 	'container' => $cotainer_id,
 	'drop_element' => $drop_el_id,
@@ -100,8 +100,6 @@ $plupload_init = array(
 	'multiple_queues' => $this->multi,
 	'max_file_size' => $max_upload_size.'b',
 	'url' => add_query_arg('wpfb_action', 'upload', WPFB_Core::$ajax_url_public),
-	'flash_swf_url' => includes_url('js/plupload/plupload.flash.swf'),
-	'silverlight_xap_url' => includes_url('js/plupload/plupload.silverlight.xap'),
 	'filters' => array( array('title' => $this->images_only ? __('Images') : __( 'Allowed Files' ), 'extensions' => $this->images_only ? 'jpg,gif,png,bmp' : '*') ),
 	'multipart' => true,
 	'urlstream_upload' => true,
