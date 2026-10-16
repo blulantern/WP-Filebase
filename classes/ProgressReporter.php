@@ -180,7 +180,7 @@ class WPFB_ProgressReporter {
     function ChangedFilesReport() {
         foreach ($this->files as $tag => $group) {
             $t = str_replace('_', ' ', $tag);
-            $t{0} = strtoupper($t{0});
+            $t = ucfirst($t);
 
             echo '<h2>' . __($t) . '</h2><ul>';
             foreach ($group as $item)
