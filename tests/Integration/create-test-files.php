@@ -9,8 +9,8 @@ class TestFileSet {
         WPFB_Admin::Mkdir($dir);
 
         $test_files = array(
-            'banner.png' => 'https://wpfilebase.com/wp-content/blogs.dir/2/files/2015/03/banner_023.png',
-            'small.txt' => 'https://wpfilebase.com/robots.txt'
+            'banner.png' => 'https://s.w.org/style/images/about/WordPress-logotype-standard.png',
+            'small.txt' => 'https://wordpress.org/robots.txt'
         );
 
 

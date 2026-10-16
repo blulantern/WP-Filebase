@@ -19,7 +19,7 @@ class CreateFileTest extends WP_UnitTestCase
         wpfb_loadclass('Admin');
         $res = WPFB_Admin::InsertFile(array(
             /* must be an image ! */
-            'file_remote_uri' => 'https://wpfilebase.com/wp-content/blogs.dir/2/files/2015/03/banner_023.png'
+            'file_remote_uri' => 'https://s.w.org/style/images/about/WordPress-logotype-standard.png'
         ));
         $this->assertEmpty($res['error'], $res['error']);
 
