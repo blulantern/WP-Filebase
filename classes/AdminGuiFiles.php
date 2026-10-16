@@ -69,7 +69,12 @@ static function Display()
 			if ( !WPFB_Core::CurUserCanUpload() )
 				wp_die(__('Cheatin&#8217; uh?'));
 			
-			extract($_POST);
+			$aa = isset($_POST['aa']) ? (int) $_POST['aa'] : 0;
+			$mm = isset($_POST['mm']) ? (int) $_POST['mm'] : 0;
+			$jj = isset($_POST['jj']) ? (int) $_POST['jj'] : null;
+			$hh = isset($_POST['hh']) ? (int) $_POST['hh'] : 0;
+			$mn = isset($_POST['mn']) ? (int) $_POST['mn'] : 0;
+			$ss = isset($_POST['ss']) ? (int) $_POST['ss'] : null;
 			if(isset($jj) && isset($ss))
 			{
 				$jj = ($jj > 31 ) ? 31 : $jj;

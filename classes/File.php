@@ -654,7 +654,7 @@ class WPFB_File extends WPFB_Item
 
         // check traffic
         if ($this->IsLocal() && !WPFB_Download::CheckTraffic($this->file_size)) {
-            header('HTTP/1.x 503 Service Unavailable');
+            WPFB_Compat::statusHeader(503);
             wp_die(WPFB_Core::$settings->traffic_exceeded_msg);
         }
 
