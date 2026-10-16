@@ -1,6 +1,7 @@
 /.idea
-/bower_components/jquery
 /nbproject
-/.buildpath
-/.project
-/vendor/james-heinrich/getid3/bin
+/node_modules
+/vendor
+/.phpunit.result.cache
+/tests/smoke/out
+/.superpowers

@@ -1,0 +1,20 @@
+parameters:
+    level: 1
+    phpVersion: 80100
+    paths:
+        - classes
+        - lib
+        - wp-filebase.php
+        - thumbnail.php
+    scanFiles:
+        - %rootDir%/../../php-stubs/wordpress-stubs/wordpress-stubs.php
+        - extras/progressbar.class.php
+        - extras/phpthumb.functions.php
+        - extras/phpthumb.bmp.php
+        - extras/getid3/getid3.php
+        - extras/getid3/getid3.lib.php
+    ignoreErrors:
+        - '#Access to an undefined property WPFB_(Item|File|Category)::\$#'
+        - '#Variable \$[a-z_]+ might not be defined#'
+        - '#Constant (ABSPATH|WPINC|WP_CONTENT_DIR|WP_CONTENT_URL|ARRAY_A|AUTH_COOKIE|SECURE_AUTH_COOKIE|LOGGED_IN_COOKIE|HOUR_IN_SECONDS|MINUTE_IN_SECONDS|WPFB_[A-Z_]+) not found#'
+    reportUnmatchedIgnoredErrors: false

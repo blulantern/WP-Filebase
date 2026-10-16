@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<ruleset name="WP-Filebase compatibility">
+    <description>PHP 8.1+ compatibility gate for WP-Filebase.</description>
+    <file>.</file>
+    <exclude-pattern>*/extras/getid3/*</exclude-pattern>
+    <exclude-pattern>*/node_modules/*</exclude-pattern>
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>*/tests/smoke/out/*</exclude-pattern>
+    <exclude-pattern>*/.superpowers/*</exclude-pattern>
+    <arg name="extensions" value="php"/>
+    <arg value="sp"/>
+    <config name="testVersion" value="8.1-"/>
+    <rule ref="PHPCompatibilityWP"/>
+</ruleset>
