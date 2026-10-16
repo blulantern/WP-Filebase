@@ -626,7 +626,7 @@ Your browser does not support the video tag.  <a href='%file_url%'>Open Video di
         $sync_data_file = WPFB_Core::UploadDir() . '/._sync.data';
         is_file($sync_data_file) && unlink($sync_data_file);
 
-        WPFB_Admin::WPCacheRejectUri(WPFB_Core::$settings->download_base . '/', $old_options['download_base'] . '/');
+        WPFB_Admin::WPCacheRejectUri(WPFB_Core::$settings->download_base . '/', (is_array($old_options) ? ($old_options['download_base'] ?? '') : '') . '/');
 
 
         // TODO, do this in background

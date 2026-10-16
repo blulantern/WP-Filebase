@@ -54,6 +54,25 @@ class WPFB_Compat
     }
 
     /**
+     * Like compileTemplate(), but never throws: a template that does not compile yields a
+     * closure that renders an escaped inline message, so a bad template degrades to a notice
+     * in the page instead of a fatal error.
+     *
+     * @param string $expr  Parsed template expression.
+     * @param string $label What the template belongs to, shown in the message (e.g. 'file list widget').
+     * @return Closure function ($f, $e = null): string
+     */
+    public static function compileTemplateOrError($expr, $label)
+    {
+        try {
+            return self::compileTemplate($expr);
+        } catch (WPFB_TemplateError $ex) {
+            $msg = esc_html(sprintf('Template for %s is invalid: %s', $label, $ex->getMessage()));
+            return static function ($f = null, $e = null) use ($msg) { return $msg; };
+        }
+    }
+
+    /**
      * PHP 8 GD returns GdImage objects; PHP 7 returned resources.
      *
      * @param mixed $img

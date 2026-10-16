@@ -992,13 +992,16 @@ class WPFB_Admin {
 	}
 
 	public static function SettingsUpdated($old, &$new) {
+		// On a fresh install there are no previous settings yet.
+		if (!is_array($old)) $old = array();
+		if (!is_array($new)) $new = array();
 		$messages = array();
 		wpfb_call('Setup', 'ProtectUploadPath');
 
 		// custom fields:
 		$messages = array_merge($messages, WPFB_Admin::SyncCustomFields());
 
-		if ($old['thumbnail_path'] != $new['thumbnail_path']) {
+		if (($old['thumbnail_path'] ?? '') != ($new['thumbnail_path'] ?? '')) {
 
 			update_option(WPFB_OPT_NAME, $old); // temporaly restore old settings
 			WPFB_Core::$settings = (object) $old;

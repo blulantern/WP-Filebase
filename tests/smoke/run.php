@@ -24,7 +24,10 @@ function site_url_for($url) { global $base; return str_replace(home_url(), $base
 $log = WP_CONTENT_DIR . '/debug.log';
 file_put_contents($log, '');
 
-// 1. activate
+// 1. activate as a FRESH install (options dropped, activation in a separate PHP process so the
+//    plugin boots with no settings — see fresh-activate.php), then re-activate in this process.
+passthru(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__DIR__ . '/fresh-activate.php'), $fresh_code);
+step('fresh-install activation', $fresh_code === 0, "exit=$fresh_code");
 $r = activate_plugin('wp-filebase/wp-filebase.php');
 step('activate', !is_wp_error($r), is_wp_error($r) ? $r->get_error_message() : '');
 wp_set_current_user(1);
