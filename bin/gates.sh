@@ -21,8 +21,8 @@ compat() {
 }
 stan() {
   echo "== PHPStan level 1"
-  sed "s#%rootDir%/../../php-stubs/wordpress-stubs/wordpress-stubs.php#$STUBS#" phpstan.neon.dist > /tmp/wpfb-phpstan.neon
-  "$TOOLS/phpstan" analyse -c /tmp/wpfb-phpstan.neon --autoload-file="$AUTOLOAD" --memory-limit=2G --no-progress && echo "stan OK"
+  sed "s#%rootDir%/../../php-stubs/wordpress-stubs/wordpress-stubs.php#$STUBS#" phpstan.neon.dist > phpstan.neon
+  "$TOOLS/phpstan" analyse -c phpstan.neon --autoload-file="$AUTOLOAD" --memory-limit=2G --no-progress && echo "stan OK"
 }
 unit() {
   echo "== PHPUnit unit suite"

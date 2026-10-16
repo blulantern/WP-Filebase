@@ -49,7 +49,6 @@ class WPFB_AdminLite
         add_action('admin_print_scripts', array('WPFB_AdminLite', 'AdminPrintScripts'));
 
 
-        add_action('in_plugin_update_message-wp-filebase-pro/wp-filebase.php', array(__CLASS__, 'pluginUpdateMessage'), 10, 2);
 
         self::CheckChangedVer();
 
@@ -228,14 +227,5 @@ class WPFB_AdminLite
     }
 
 
-static function pluginUpdateMessage($plugin_data, $response)
-{
-    if(empty( $response->package )) {
-        $u = WPFB_ProLib::getLicenseExtendUrl();
-        echo "<br><b>Please <a href='".$u."'>extend your license</a>.</b>";
-        //print_r($plugin_data);
-        //print_r($response);
-    }
-}
 
 }

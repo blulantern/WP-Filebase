@@ -5,18 +5,7 @@ class WPFB_AdminGuiManage
 
     static function NewExtensionsAvailable()
     {
-        $last_gui_time = get_user_option('wpfb_ext_tagtime');
-        if (!$last_gui_time) return true;
-        $tag_time = get_transient('wpfb_ext_tagtime');
-        if (!$tag_time) {
-            wpfb_loadclass('ExtensionLib');
-            $res = WPFB_ExtensionLib::QueryAvailableExtensions();
-            if (!$res || empty($res->info)) return false;
-            $tag_time = $res->info['tag_time'];
-            set_transient('wpfb_ext_tagtime', $tag_time, 0  + 6 * HOUR_IN_SECONDS);
-        }
-
-        return (!$last_gui_time || $last_gui_time != $tag_time);
+        return false;
     }
 
     static function Display()
@@ -121,11 +110,6 @@ class WPFB_AdminGuiManage
 
                                 <p>Please <a href="http://wordpress.org/support/view/plugin-reviews/wp-filebase">give it
                                         a good rating</a>.</p>
-                                <p>For Cloud support and lots of other advanced features consider an</p>
-                                <p style="text-align: center;"><a href="https://wpfilebase.com/?ref=dblike"
-                                                                  class="button-primary">Upgrade to Pro</a></p>
-                                <p style="text-align: center;"><a href="http://demo.wpfilebase.com/?ref=dblike"
-                                                                  class="button">Live Pro Demo</a></p>
                                 <p style="text-align:right;float:right;font-style:italic;">Thanks, Fabian</p>
                                 <!-- <div style="text-align: center;">
 	<?php //WPFB_Admin::PrintPayPalButton() ?>
@@ -241,9 +225,6 @@ class WPFB_AdminGuiManage
                     echo "</p>";
                     break;
 
-                case 'install-extensions':
-                    wpfb_call('AdmInstallExt', 'Display');
-                    break;
 
             } // switch
 
@@ -275,27 +256,6 @@ class WPFB_AdminGuiManage
 
     static function ProUpgradeNag()
     {
-        static $first = true;
-        if ($first) $first = false;
-        else return;
-
-        if (!current_user_can('install_plugins') || (time() - get_user_option('wpfb_dismiss_pro_nag', get_current_user_id())) < (86400 * 30 * 5))
-            return;
-
-        if (!empty($_REQUEST['wpfb_dismiss_pro_nag'])) {
-            update_user_option(get_current_user_id(), 'wpfb_dismiss_pro_nag', time());
-            return;
-        }
-        ?>
-        <div class="notice notice-info"><p>
-                <?php _e('Upgrade to WP-Filebase Pro for cloud support, advanced permissions handling and much more.', 'wp-filebase'); ?>
-                <a href="https://wpfilebase.com/?ref=dbnote" target="_blank" class="button-primary">Learn More</a>
-                <a href="http://demo.wpfilebase.com/?ref=dbnote" target="_blank" class="button-primary">Live Pro
-                    Demo</a>
-                <a href="<?php echo esc_attr(add_query_arg('wpfb_dismiss_pro_nag', 1)); ?>" class="dismiss"
-                   style="display:block;float:right;margin:0 10px 0 15px;"><?php _e('Dismiss'); ?></a>
-            </p>
-        </div>
-        <?php
+        // The Pro edition and its upsell notice were discontinued with the upstream plugin.
     }
 }
