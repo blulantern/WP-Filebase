@@ -11,16 +11,22 @@ define('WPFB_NO_CORE_INIT', true);
 wpfb_loadclass('Core', 'File', 'Category', 'Download');
 
 $item = null;
+$kind = null;
 
 if (isset($_GET['fid'])) {
-    $item = WPFB_File::GetFile(0 + $_GET['fid']);
+    $item = WPFB_File::GetFile((int) $_GET['fid']);
+    $kind = 'file';
 } elseif (isset($_GET['cid'])) {
-    $item = WPFB_Category::GetCat(0 + $_GET['cid']);
+    $item = WPFB_Category::GetCat((int) $_GET['cid']);
+    $kind = 'cat';
 }
 
-// consider the 'name' input argument as a secret and use it for authentication
-// TODO: better use a signuature with wp_nonce api
-if ($item == null || (!$item->CurUserCanAccess(true) && $_GET['name'] != $item->file_thumbnail)) {
+// Non-public items need the HMAC signature minted by WPFB_Item::GetIconUrl().
+$thumb_name = $item ? ($kind === 'file' ? (string) $item->file_thumbnail : (string) $item->cat_icon) : '';
+$sig_ok = $item && isset($_GET['sig'])
+    && hash_equals(WPFB_Compat::thumbSig($item->GetId(), $kind, $thumb_name), (string) $_GET['sig']);
+
+if ($item == null || (!$item->CurUserCanAccess(true) && !$sig_ok)) {
     header('X-Fallback-Thumb: 1');
     $img_path = ABSPATH . WPINC . '/images/';
     if (file_exists($img = $img_path . 'crystal/default.png')

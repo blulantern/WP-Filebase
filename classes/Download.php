@@ -565,7 +565,7 @@ class WPFB_Download
         }
 
         if ( ! @file_exists($file_path) || ! is_file($file_path)) {
-            header('HTTP/1.x 404 Not Found');
+            WPFB_Compat::statusHeader(404);
             wp_die('File ' . basename($file_path) . ' not found!');
         }
 
@@ -627,7 +627,7 @@ class WPFB_Download
 
                 if ($not_modified) {
                     header("Content-Length: " . $size);
-                    header("HTTP/1.x 304 Not Modified");
+                    WPFB_Compat::statusHeader(304);
                     exit;
                 }
             }
@@ -641,10 +641,10 @@ class WPFB_Download
         list($begin, $end) = self::ParseRangeHeader($size);
 
         if ($begin > 0 || $end < ($size - 1)) {
-            header('HTTP/1.0 206 Partial Content');
+            WPFB_Compat::statusHeader(206);
             header("Content-Range: bytes $begin-$end/$size");
         } else {
-            header('HTTP/1.0 200 OK');
+            WPFB_Compat::statusHeader(200);
         }
 
         $length = ($end - $begin + 1);
@@ -682,12 +682,6 @@ class WPFB_Download
         // close db connection
         if (method_exists($wpdb, 'close')) {
             $wpdb->close();
-        } elseif (function_exists('mysql_close')) {
-            if ( ! empty($wpdb->dbh) && is_resource($wpdb->dbh)) {
-                @mysql_close($wpdb->dbh);
-            } else {
-                @mysql_close();
-            }
         }
 
         @ob_flush();

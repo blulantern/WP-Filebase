@@ -61,12 +61,12 @@ class WPFB_Search
         $search_terms = array();
 
         if (!empty($s)) {
-            $s = esc_sql(stripslashes($s));
+            $s = stripslashes($s);
             if ($sentence)
                 $search_terms = array($s);
             else {
                 preg_match_all('/".*?("|$)|((?<=[\\s",+])|^)[^\\s",+]+/', $s, $matches);
-                $search_terms = array_map(create_function('$a', 'return trim($a, "\\"\'\\n\\r ");'), $matches[0]);
+                $search_terms = array_map(static function ($a) { return trim($a, "\"'\n\r "); }, $matches[0]);
             }
         }
         return $search_terms;
@@ -93,28 +93,55 @@ class WPFB_Search
         $exact = !empty($wp_query->query_vars['exact']);
         $p = $exact ? '' : '%';
         $search_terms = self::getSearchTerms($s);
+        $columns = array();
+        foreach ($search_fields as $sf) $columns[] = "{$wpdb->wpfilebase_files}.{$sf}";
+        return self::BuildTermsWhere(
+            $search_terms,
+            $columns,
+            $p,
+            $search_id3 ? "{$wpdb->wpfilebase_files_id3}.keywords" : null,
+            array($wpdb, 'esc_like'),
+            array($wpdb, 'prepare')
+        );
+    }
+
+    /**
+     * Build the "(1 AND (...) AND NOT (...))" clause for a list of search terms.
+     * Pure: every dependency is injected so it can be unit-tested.
+     *
+     * @param string[] $terms      Raw, trimmed terms; a leading '-' negates, '*' is a wildcard.
+     * @param string[] $columns    Fully qualified column names.
+     * @param string   $p          '%' for substring match, '' for exact.
+     * @param ?string  $id3_column Keywords column to OR in for positive terms, or null.
+     * @param callable $esc_like   wpdb::esc_like
+     * @param callable $prepare    wpdb::prepare
+     * @return string
+     */
+    public static function BuildTermsWhere(array $terms, array $columns, $p, $id3_column, callable $esc_like, callable $prepare)
+    {
         $where = "(1";
-
-        // TODO: search fields with match...
-        foreach ($search_terms as $term) {
-            $where .= ($not = ($term[0] === '-')) ? " AND NOT (" : " AND (";
+        foreach ($terms as $term) {
+            $term = (string) $term;
+            $not = WPFB_Compat::firstChar($term) === '-';
             if ($not) $term = substr($term, 1);
+            if ($term === '') continue;
 
-            $wc = strpos($term, '*') !== false; // check for wildcard
+            $wc = strpos($term, '*') !== false;
+            $pattern = $wc ? str_replace('*', '%', $esc_like(str_replace('*', "\0", $term))) : $p . $esc_like($term) . $p;
+            $pattern = str_replace("\0", '%', $pattern);
 
+            $where .= $not ? " AND NOT (" : " AND (";
             $or = '';
-            foreach ($search_fields as $sf) {
-                $col = "{$wpdb->wpfilebase_files}.{$sf}";
-                $where .= " {$or}({$col} LIKE '" . ($wc ? str_replace('*', '%', $term) : "{$p}{$term}{$p}") . "')";
-                if (empty($or)) $or = 'OR ';
+            foreach ($columns as $col) {
+                $where .= " {$or}(" . $prepare("{$col} LIKE %s", $pattern) . ")";
+                if ($or === '') $or = 'OR ';
             }
-            // !$not -> dont exclude from id3 files
-            if (!$not && $search_id3) $where .= " OR ({$wpdb->wpfilebase_files_id3}.keywords LIKE '{$p}{$term}{$p}')"; // TODO: MATCH func here
+            if (!$not && $id3_column) {
+                $where .= " OR (" . $prepare("{$id3_column} LIKE %s", $p . $esc_like($term) . $p) . ")";
+            }
             $where .= ") ";
         }
-        $where .= ")";
-
-        return $where;
+        return $where . ")";
     }
 
 // injects extra sql for file attachments search

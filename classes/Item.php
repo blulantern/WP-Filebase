@@ -475,12 +475,15 @@ class WPFB_Item
 
         if ($this->is_category) {
             // add mtime for cache updates
-            return empty($this->cat_icon) ? (WP_CONTENT_URL . WPFB_Core::$settings->folder_icon) : home_url("?wpfilebase_thumbnail=1&cid=$this->cat_id&t=" . @filemtime($this->GetThumbPath()));
+            return empty($this->cat_icon) ? (WP_CONTENT_URL . WPFB_Core::$settings->folder_icon)
+                : home_url("?wpfilebase_thumbnail=1&cid=$this->cat_id&t=" . @filemtime($this->GetThumbPath())
+                    . '&sig=' . WPFB_Compat::thumbSig($this->cat_id, 'cat', $this->cat_icon));
         }
 
         if (!empty($this->file_thumbnail) /* && file_exists($this->GetThumbPath()) */) { // speedup
-            //. '&s='. wp_create_nonce( 'thumb_file'.$this->file_id ) // TODO: signed thumbnail urls
-            return home_url('?wpfilebase_thumbnail=1&fid=' . $this->file_id . '&name=' . $this->file_thumbnail); // name var only for correct caching!
+            // name keeps caches distinct per thumbnail; sig authorises non-public items (see thumbnail.php)
+            return home_url('?wpfilebase_thumbnail=1&fid=' . $this->file_id . '&name=' . rawurlencode($this->file_thumbnail)
+                . '&sig=' . WPFB_Compat::thumbSig($this->file_id, 'file', $this->file_thumbnail));
         }
 
         $type = $this->GetType();

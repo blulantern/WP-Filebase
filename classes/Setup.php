@@ -40,13 +40,13 @@ class WPFB_Setup
 
         WPFB_Core::$settings = (object)get_option(WPFB_OPT_NAME);
 
-        add_option(WPFB_OPT_NAME . '_ftags', array(), null, 'no'/*autoload*/);
+        add_option(WPFB_OPT_NAME . '_ftags', array(), '', 'no');
 
 
         // for static css caching
         add_option('wpfb_css', WPFB_PLUGIN_URI . 'wp-filebase.css?v=' . WPFB_VERSION);
 
-        add_option('wpfilebase_cron_sync_stats', array(), null, 'no'/*autoload*/);
+        add_option('wpfilebase_cron_sync_stats', array(), '', 'no');
 
     }
 
@@ -94,10 +94,10 @@ Your browser does not support the video tag.  <a href='%file_url%'>Open Video di
             //'data-table' => '<!-- EMPTY: categories should not be listed in DataTables -->',
         );
 
-        add_option(WPFB_OPT_NAME . '_tpls_file', $def_tpls_file, null, 'no'/*autoload*/);
-        add_option(WPFB_OPT_NAME . '_tpls_cat', $def_tpls_cat, null, 'no'/*autoload*/);
-        add_option(WPFB_OPT_NAME . '_ptpls_file', array(), null, 'no'/*autoload*/);
-        add_option(WPFB_OPT_NAME . '_ptpls_cat', array(), null, 'no'/*autoload*/);
+        add_option(WPFB_OPT_NAME . '_tpls_file', $def_tpls_file, '', 'no');
+        add_option(WPFB_OPT_NAME . '_tpls_cat', $def_tpls_cat, '', 'no');
+        add_option(WPFB_OPT_NAME . '_ptpls_file', array(), '', 'no');
+        add_option(WPFB_OPT_NAME . '_ptpls_cat', array(), '', 'no');
 
         $def_tpls_list = array(
             'default' => array(
@@ -152,7 +152,7 @@ Your browser does not support the video tag.  <a href='%file_url%'>Open Video di
 
             ) */
         );
-        add_option(WPFB_OPT_NAME . '_list_tpls', $def_tpls_list, null, 'no'/*autoload*/);
+        add_option(WPFB_OPT_NAME . '_list_tpls', $def_tpls_list, '', 'no');
 
         // delete old (<0.2.0) tpl options and copy to new
         $old_tpls = get_option(WPFB_OPT_NAME . '_tpls');
@@ -639,7 +639,7 @@ Your browser does not support the video tag.  <a href='%file_url%'>Open Video di
 
         if (!wp_next_scheduled(WPFB . '_cron'))
             wp_schedule_event(time() + 20, 'hourly', WPFB . '_cron');
-        if (!get_option('wpfb_install_time')) add_option('wpfb_install_time', (($ft = (int)mysql2date('U', $wpdb->get_var("SELECT file_mtime FROM $wpdb->wpfilebase_files ORDER BY file_mtime ASC LIMIT 1"))) > 0) ? $ft : time(), null, 'no');
+        if (!get_option('wpfb_install_time')) add_option('wpfb_install_time', (($ft = (int)mysql2date('U', $wpdb->get_var("SELECT file_mtime FROM $wpdb->wpfilebase_files ORDER BY file_mtime ASC LIMIT 1"))) > 0) ? $ft : time(), '', 'no');
 
         $wp_upload = wp_upload_dir();
 
