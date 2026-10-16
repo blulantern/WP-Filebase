@@ -126,7 +126,7 @@ private static function indexDocument($file, &$info, &$times)
 		$keywords = str_replace(array('\n', '&#10;'), '', $keywords);
 		$keywords = preg_replace('/\s\s+/', ' ', $keywords);
 		if (!function_exists('mb_detect_encoding') || mb_detect_encoding($keywords, "UTF-8") != "UTF-8")
-			$keywords = utf8_encode($keywords);
+			$keywords = function_exists('mb_convert_encoding') ? mb_convert_encoding($keywords, 'UTF-8', 'ISO-8859-1') : $keywords;
 		// restore prev encoding
 		if (function_exists('mb_internal_encoding'))
 			mb_internal_encoding($cur_enc);

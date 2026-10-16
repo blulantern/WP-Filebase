@@ -62,7 +62,7 @@ if (!defined('WPFB')) {
             if (!$res) {
                 echo("<p>WP-Filebase Error: Could not include class file <b>'{$cl}'</b>!</p>");
                 if (defined('WP_DEBUG') && WP_DEBUG) {
-                    print_r(debug_backtrace());
+                    print_r(debug_backtrace()); // phpcs:ignore PHPCompatibility.FunctionUse.ArgumentFunctionsReportCurrentValue
                 }
             } else {
                 if (!class_exists($cln)) {

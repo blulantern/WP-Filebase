@@ -48,10 +48,10 @@ class WPFB_Sync
 
     public static function CaptureError($number, $message, $file, $line)
     {
-        if ($number == E_STRICT || $number == E_NOTICE
-            || $number == E_WARNING
+        if ($number == E_NOTICE || $number == E_WARNING || $number == E_USER_NOTICE
+            || $number == E_DEPRECATED || $number == E_USER_DEPRECATED
         ) {
-            return;
+            return true; // swallowed, as before (false would hand them back to PHP's logger)
         }
         $error = array(
             'type' => $number,

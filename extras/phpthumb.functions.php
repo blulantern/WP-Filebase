@@ -236,7 +236,7 @@ class phpthumb_functions {
 	}
 
 	static function ImageHexColorAllocate(&$gdimg_hexcolorallocate, $HexColorString, $dieOnInvalid=false, $alpha=false) {
-		if (!is_resource($gdimg_hexcolorallocate)) {
+		if (!WPFB_Compat::isGdImage($gdimg_hexcolorallocate)) {
 			die('$gdimg_hexcolorallocate is not a GD resource in ImageHexColorAllocate()');
 		}
 		if (phpthumb_functions::IsHexColor($HexColorString)) {
@@ -258,7 +258,7 @@ class phpthumb_functions {
 
 
 	static function GetPixelColor(&$img, $x, $y) {
-		if (!is_resource($img)) {
+		if (!WPFB_Compat::isGdImage($img)) {
 			return false;
 		}
 		return @ImageColorsForIndex($img, @ImageColorAt($img, $x, $y));
@@ -438,7 +438,7 @@ class phpthumb_functions {
 			foreach ($disable_functions_global as $key => $value) {
 				$DisabledFunctions[trim($value)] = 'global';
 			}
-			if (@ini_get('safe_mode')) {
+			if (false) { // safe_mode was removed in PHP 5.4
 				$DisabledFunctions['shell_exec']     = 'local';
 				$DisabledFunctions['set_time_limit'] = 'local';
 			}
