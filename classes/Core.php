@@ -134,15 +134,6 @@ class WPFB_Core
         return ($cache[$for] = $fn);
     }
 
-    static function InitDirectScriptAccess()
-    {
-        if (is_multisite() && !empty($_REQUEST['blog_id']) && get_current_blog_id() != $_REQUEST['blog_id']) {
-            $blog_id = (int)$_REQUEST['blog_id'];
-            if (!get_blog_details($blog_id, false))
-                die('Blog does not exists!');
-            switch_to_blog($blog_id);
-        }
-    }
 
     static function GetOpt($name = null)
     {

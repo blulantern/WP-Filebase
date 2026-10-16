@@ -219,19 +219,6 @@ class WPFB_AdminLite
             wpfb_call('Output', 'PrintJS');
         }
 
-        if (has_filter('ckeditor_external_plugins')) {
-            ?>
-            <script type="text/javascript">
-                //<![CDATA[
-                /* CKEditor Plugin */
-                if (typeof(ckeditorSettings) == 'object') {
-                    ckeditorSettings.externalPlugins.wpfilebase = ajaxurl + '/../../wp-content/plugins/wp-filebase/extras/ckeditor/';
-                    ckeditorSettings.additionalButtons.push(["WPFilebase"]);
-                }
-                //]]>
-            </script>
-            <?php
-        }
     }
 
     static function AdminDashboardSetup()

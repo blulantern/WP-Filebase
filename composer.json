@@ -1,5 +1,25 @@
 {
+    "name": "blulantern/wp-filebase",
+    "description": "WP-Filebase download manager, PHP 8 / WordPress 7 compatibility fork.",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
     "require": {
-        "james-heinrich/getid3": "~2.0.0-dev"
+        "php": ">=8.1"
+    },
+    "require-dev": {
+        "php-stubs/wordpress-stubs": "^6.6",
+        "phpstan/phpstan": "^1.12",
+        "squizlabs/php_codesniffer": "^3.10",
+        "phpcompatibility/phpcompatibility-wp": "^2.1",
+        "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+        "phpunit/phpunit": "^9.6"
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    },
+    "scripts": {
+        "gates": "bin/gates.sh all"
     }
 }
