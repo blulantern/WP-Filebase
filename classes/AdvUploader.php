@@ -10,11 +10,8 @@
 	
 	public static function Create($form_url, $is_edit=false)
 	{
-		$uploader_class = (version_compare(get_bloginfo('version'), '3.2.1') <= 0) ? 'SWFUpload' : 'PLUpload';
-		wpfb_loadclass($uploader_class);
-		$uploader_class = "WPFB_".$uploader_class;
-
-		return new $uploader_class($form_url, $is_edit);
+		wpfb_loadclass('PLUpload');
+		return new WPFB_PLUpload($form_url, $is_edit);
 	}
 	
 	function GetAjaxAuthData($json=false)

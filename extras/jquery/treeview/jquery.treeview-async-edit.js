@@ -60,7 +60,7 @@
 		},
 		applyClasses: function(settings, toggler) {
 			// TODO use event delegation
-			this.filter(":has(>ul):not(:has(>a))").find(">span").unbind("click.treeview").bind("click.treeview", function(event) {
+			this.filter(":has(>ul):not(:has(>a))").find(">span").off("click.treeview").on("click.treeview", function(event) {
 				// don't handle click events on children, eg. checkboxes
 				// WPFB MOD: also toggle when clicking children
 				//if ( this == event.target )
@@ -348,7 +348,7 @@
 			settings.root = "source";
 		}
 		var container = this;
-		if (!container.children().size())
+		if (!container.children().length)
 			load(settings, settings.root, this, container);
 		var userToggle = settings.toggle;
 		return proxied.call(this, $.extend({}, settings, {
@@ -383,7 +383,7 @@
 		if (settings.remove) {
 			return this.trigger("remove", [settings.remove]);
 		}
-		return proxied.apply(this, arguments).bind("add", function(event, branches) {
+		return proxied.apply(this, arguments).on("add", function(event, branches) {
 			$(branches).prev()
 			           .removeClass(CLASSES.last)
 			           .removeClass(CLASSES.lastCollapsable)
@@ -391,8 +391,8 @@
 			           .find(">.hitarea")
 			           .removeClass(CLASSES.lastCollapsableHitarea)
 			           .removeClass(CLASSES.lastExpandableHitarea);
-			$(branches).find("li").andSelf().prepareBranches(settings).applyClasses(settings, $(this).data("toggler"));
-		}).bind("remove", function(event, branches) {
+			$(branches).find("li").addBack().prepareBranches(settings).applyClasses(settings, $(this).data("toggler"));
+		}).on("remove", function(event, branches) {
 			var prev = $(branches).prev();
 			var parent = $(branches).parent();
 			$(branches).remove();
@@ -403,7 +403,7 @@
 			    .find(">.hitarea").replaceClass(CLASSES.collapsableHitarea, CLASSES.lastCollapsableHitarea);
 			if (parent.is(":not(:has(>))") && parent[0] != this) {
 				parent.parent().removeClass(CLASSES.collapsable).removeClass(CLASSES.expandable)
-				parent.siblings(".hitarea").andSelf().remove();
+				parent.siblings(".hitarea").addBack().remove();
 			}
 		});
 	};
