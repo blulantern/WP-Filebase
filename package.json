@@ -1,0 +1,7 @@
+{
+  "name": "wp-filebase",
+  "version": "0.4.0",
+  "private": true,
+  "scripts": { "test:e2e": "playwright test" },
+  "devDependencies": { "@playwright/test": "^1.49.1" }
+}

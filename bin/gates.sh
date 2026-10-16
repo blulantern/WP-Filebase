@@ -2,9 +2,11 @@
 # Quality gates for WP-Filebase. Usage: bin/gates.sh [lint|compat|stan|unit|all]
 set -euo pipefail
 cd "$(dirname "$0")/.."
-TOOLS="${WPFB_TOOLS:-$PWD/../secure-filebase/vendor/bin}"
-STUBS="${WPFB_STUBS:-$PWD/../secure-filebase/vendor/php-stubs/wordpress-stubs/wordpress-stubs.php}"
-AUTOLOAD="${WPFB_AUTOLOAD:-$PWD/../secure-filebase/vendor/autoload.php}"
+# Tooling comes from this plugin's own `composer install` when present, else from the sibling SecureFilebase checkout.
+if [ -x "$PWD/vendor/bin/phpcs" ]; then V="$PWD/vendor"; else V="$PWD/../secure-filebase/vendor"; fi
+TOOLS="${WPFB_TOOLS:-$V/bin}"
+STUBS="${WPFB_STUBS:-$V/php-stubs/wordpress-stubs/wordpress-stubs.php}"
+AUTOLOAD="${WPFB_AUTOLOAD:-$V/autoload.php}"
 
 lint() {
   echo "== php -l"

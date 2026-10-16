@@ -2,9 +2,10 @@
 Contributors: fabifott
 Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=wpfilebase%40fabi%2eme&item_name=WP-Filebase&no_shipping=0&no_note=1&tax=0&currency_code=USD&lc=US&bn=PP%2dDonationsBF&charset=UTF%2d8
 Tags: filebase, filemanager, file, files, manager, upload, download, downloads, downloadmanager, images, pdf, widget, filelist, list, thumbnails, thumbnail, attachment, attachments, category, categories, media, template, ftp, http, mp3, id3
-Requires at least: 3.1
-Tested up to: 4.8
-Stable tag: 0.3.4.24
+Requires at least: 6.6
+Requires PHP: 8.1
+Tested up to: 7.1
+Stable tag: 0.4.0
 Demo link: http://demo.wpfilebase.com/
 
 
