@@ -133,8 +133,6 @@
 
         set_transient('wpfb_file_type_stats', $stats, 24 * HOUR_IN_SECONDS); // should (must) be on daily-base!
 
-        wpfb_call('ExtensionLib', 'SendStatistics');
-
         return $stats;
     }
 

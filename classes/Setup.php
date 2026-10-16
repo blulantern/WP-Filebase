@@ -614,13 +614,6 @@ Your browser does not support the video tag.  <a href='%file_url%'>Open Video di
     {
         global $wpdb;
 
-        // make sure that either wp-filebase or wp-filebase pro is enabled bot not both!
-        if (!function_exists('is_plugin_active')) {
-            require_once ABSPATH . 'wp-admin/includes/plugin.php';
-        }
-
-                if (is_plugin_active('wp-filebase-pro/wp-filebase.php'))            deactivate_plugins('wp-filebase/wp-filebase.php');
-
         wpfb_loadclass('Admin', 'File', 'Category');
         self::SetupDBTables($old_ver);
         $old_options = get_option(WPFB_OPT_NAME);

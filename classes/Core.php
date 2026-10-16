@@ -52,12 +52,6 @@ class WPFB_Core
         // for attachments and file browser
         add_filter('the_content', array(__CLASS__, 'ContentFilter'), 10); // must be lower than 11 (before do_shortcode) and after wpautop (>9)
 
-        // this adds the wp-filebase update channel
-        add_filter('pre_set_site_transient_update_plugins', array(__CLASS__, 'PreSetPluginsTransientFilter'));
-
-        // for wpfb-extension details
-        add_filter('plugins_api', array(__CLASS__, 'PluginsApiFilter'), 10, 3);
-
         add_filter('ext2type', array(__CLASS__, 'Ext2TypeFilter'));
 
         add_shortcode('wpfilebase', array(__CLASS__, 'ShortCode'));
@@ -517,30 +511,6 @@ class WPFB_Core
         return create_function('$f,$e=null', "return ($parsed_tpl);");
     }
 
-    /**
-     * Hooks into update checks and adds extensions
-     *
-     * @param type $value
-     * @return type
-     */
-    static function PreSetPluginsTransientFilter($value)
-    {
-        if (!isset($value->response) || !is_array($value->response))
-            return $value;
-        $lvi = wpfb_call('ExtensionLib', 'GetLatestVersionInfoExt');
-        if (!empty($lvi))
-            $value->response = array_merge($value->response, $lvi);
-        return $value;
-    }
-
-    static function PluginsApiFilter($value, $action = null, $args = null)
-    {
-        if ($value)
-            return $value;
-        if (!is_object($args))
-            $args = (object)$args;
-        return ($action === 'plugin_information' && (                strncmp($args->slug, "wpfb-", 5) === 0)) ? wpfb_call('ExtensionLib', 'GetApiPluginInfo', $args->slug) : $value;
-    }
 
     static function CurUserCanCreateCat()
     {

@@ -44,6 +44,8 @@ if (!defined('WPFB')) {
 
     spl_autoload_register('wpfb_autoloadV2');
 
+    require_once WPFB_PLUGIN_ROOT . 'classes/Compat.php';
+
     function wpfb_loadclass($cl)
     {
         if (func_num_args() > 1) {
@@ -56,7 +58,7 @@ if (!defined('WPFB')) {
                 return true;
 
             $p = WPFB_PLUGIN_ROOT . "classes/{$cl}.php";
-            $res = (include_once $p);
+            $res = is_file($p) ? (include_once $p) : false;
             if (!$res) {
                 echo("<p>WP-Filebase Error: Could not include class file <b>'{$cl}'</b>!</p>");
                 if (defined('WP_DEBUG') && WP_DEBUG) {
@@ -98,13 +100,13 @@ if (!defined('WPFB')) {
     /**
      * Creates a callback with lazy class autoloading.
      *
-     * @param $cl
-     * @param $fnc
-     * @return string
+     * @param string $cl
+     * @param string $fnc
+     * @return Closure
      */
     function wpfb_callback($cl, $fnc)
     {
-        return create_function('', '$p=func_get_args();return wpfb_call("' . $cl . '","' . $fnc . '",$p,true);');
+        return WPFB_Compat::callback($cl, $fnc);
     }
 
     function wpfilebase_init()
@@ -128,7 +130,6 @@ if (!defined('WPFB')) {
     function wpfilebase_deactivate()
     {
         wpfb_loadclass('Core', 'Admin', 'Setup');
-        wpfb_call('ExtensionLib', 'PluginDeactivated');
         WPFB_Setup::OnDeactivate();
     }
 

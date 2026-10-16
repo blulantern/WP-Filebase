@@ -323,7 +323,7 @@ class WPFB_Category extends WPFB_Item
      * @return null|WPFB_RemoteSync
      */
     function getCloudSync() {
-        wpfb_loadclass('RemoteSync');
+        if (!class_exists('WPFB_RemoteSync')) return null;
         $rs = WPFB_RemoteSync::GetByCat($this->GetId());
         if($rs) return $rs;
         $parent = $this->GetParent();
