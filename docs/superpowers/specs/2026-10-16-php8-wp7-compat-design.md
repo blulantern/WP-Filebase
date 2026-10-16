@@ -157,8 +157,10 @@ re-parses them anyway.
 - `extras/jquery/treeview/jquery.treeview-async-edit.js`: `.andSelf()` →
   `.addBack()`, `.size()` → `.length`, `.bind/.unbind` → `.on/.off`; re-minify
   (`terser`) to the `.min.js` the plugin enqueues.
-- `extras/jquery/dataTables` → DataTables 1.13.x (same 1.10 API, jQuery 3 safe),
-  same handle names `jquery-dataTables`.
+- `extras/jquery/dataTables/datatables.min.js` (1.10.10 bundle with AutoFill,
+  Buttons, ColVis, FixedHeader, Responsive): patch its single `.andSelf()` call to
+  `.addBack()` in place; the plugin only calls `.DataTable()`, so the bundle is
+  otherwise jQuery-3 clean and re-assembling a 1.13 bundle buys nothing.
 - `tinymce/editor_plugin.js` ported to the TinyMCE 4 API
   (`tinymce.PluginManager.add('wpfilebase', function (editor, url) { editor.addButton(…) })`),
   same dialog URL (`admin.php?wpfilebase-screen=editor-plugin`). Registered via the
