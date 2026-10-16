@@ -102,26 +102,15 @@ static function ParseTplIfBlock($block)
 
 
 static function Check($tpl)
-{	
+{
 	$result = array('error' => false, 'msg' => '', 'line' => '');
-	
-	wpfb_loadclass('File');
-	$f = new WPFB_File();
-	$e = null; // extra data
-	$tpl = 'return (' . $tpl . ');';
-	
-	if(!@eval($tpl))
-	{
+	try {
+		WPFB_Compat::compileTemplate($tpl);
+	} catch (WPFB_TemplateError $e) {
 		$result['error'] = true;
-		
-		$err = error_get_last();
-		if(!empty($err))
-		{
-			$result['msg'] = $err['message'];
-			$result['line'] = $err['line'];
-		}
+		$result['msg'] = $e->getMessage();
+		$result['line'] = $e->getPrevious() ? $e->getPrevious()->getLine() : '';
 	}
-	
 	return $result;
 }
 

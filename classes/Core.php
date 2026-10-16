@@ -177,7 +177,8 @@ class WPFB_Core
     static function BgScanWork($worker = false)
     {
         wpfb_loadclass('Sync');
-        WPFB_Sync::RescanFiles();
+        if (method_exists('WPFB_Sync', 'RescanFiles')) // background rescan only exists in the Pro edition
+            WPFB_Sync::RescanFiles();
     }
 
     static function GenRewriteRules()
@@ -508,7 +509,7 @@ class WPFB_Core
 
     static function CreateTplFunc($parsed_tpl)
     {
-        return create_function('$f,$e=null', "return ($parsed_tpl);");
+        return WPFB_Compat::compileTemplate($parsed_tpl);
     }
 
 

@@ -49,6 +49,7 @@ class WPFB_File extends WPFB_Item
     var $file_last_dl_time;
     var $file_rescan_pending = 0;
     var $file_scan_lock = 0;
+    var $info = null;
 
     //var $file_edited_time;
     //var $file_meta;
