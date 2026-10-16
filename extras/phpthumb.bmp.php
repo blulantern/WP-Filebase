@@ -729,7 +729,7 @@ class phpthumb_bmp {
 			}
 
 		}
-		if (!is_resource($gd)) {
+		if (!WPFB_Compat::isGdImage($gd)) {
 			return false;
 		}
 
