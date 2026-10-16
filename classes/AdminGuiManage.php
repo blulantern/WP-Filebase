@@ -31,7 +31,6 @@ class WPFB_AdminGuiManage
         $clean_uri = remove_query_arg(array('message', 'action', 'file_id', 'cat_id', 'deltpl', 'hash_sync', 'doit', 'ids', 'files', 'cats', 'batch_sync' /* , 's'*/)); // keep search keyword
 
 
-        WPFB_Admin::PrintFlattrHead();
         ?>
         <script type="text/javascript">
             /* Liking/Donate Bar */
@@ -94,19 +93,6 @@ class WPFB_AdminGuiManage
                             <div id="wpfb-liking">
                                 <!-- <div style="text-align: center;"><iframe src="http://www.facebook.com/plugins/like.php?href=http%3A%2F%2Fwordpress.org%2Fextend%2Fplugins%2Fwp-filebase%2F&amp;send=false&amp;layout=button_count&amp;width=150&amp;show_faces=false&amp;action=like&amp;colorscheme=light&amp;font&amp;height=21" scrolling="no" frameborder="0" style="border:none; overflow:hidden; width:140px; height:21px; display:inline-block; text-align:center;" <?php echo ' allowTransparency="true"'; ?>></iframe></div> -->
 
-                                <div style="text-align: center;"><a href="https://twitter.com/wpfilebase"
-                                                                    class="twitter-follow-button"
-                                                                    data-show-count="false">Follow @wpfilebase</a>
-                                    <script type="text/javascript">!function (d, s, id) {
-                                            var js, fjs = d.getElementsByTagName(s)[0];
-                                            if (!d.getElementById(id)) {
-                                                js = d.createElement(s);
-                                                js.id = id;
-                                                js.src = "//platform.twitter.com/widgets.js";
-                                                fjs.parentNode.insertBefore(js, fjs);
-                                            }
-                                        }(document, "script", "twitter-wjs");</script>
-                                </div>
 
                                 <p>Please <a href="http://wordpress.org/support/view/plugin-reviews/wp-filebase">give it
                                         a good rating</a>.</p>

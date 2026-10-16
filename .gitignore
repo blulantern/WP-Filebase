@@ -6,3 +6,5 @@
 /tests/smoke/out
 /.superpowers
 /phpstan.neon
+/test-results
+/.composer-home

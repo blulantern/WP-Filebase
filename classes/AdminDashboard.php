@@ -236,11 +236,7 @@ class WPFB_AdminDashboard
     static function WidgetAbout()
     {
         ?>        <p>
-        <?php echo WPFB_PLUGIN_NAME . ' ' . WPFB_VERSION ?> by Fabian Schlieper <a href="http://fabi.me/">
-            <?php if (strpos($_SERVER['SERVER_PROTOCOL'], 'HTTPS') === false) { ?><img
-                src="http://fabi.me/misc/wpfb_icon.gif?lang=<?php if (defined('WPLANG')) {
-                    echo WPLANG;
-                } ?>" alt="" /><?php } ?> fabi.me</a><br/>
+        <?php echo WPFB_PLUGIN_NAME . ' ' . WPFB_VERSION ?> by Fabian Schlieper (original author).<br/>
         Includes the great file analyzer <a href="http://www.getid3.org/">getID3()</a> by James Heinrich.<br/>
     </p>
         <?php if (current_user_can('edit_files')) { ?>

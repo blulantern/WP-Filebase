@@ -20,8 +20,8 @@ class WPFB_Category extends WPFB_Item
     var $cat_order;
     var $cat_wp_term_id = 0;
     var $cat_scan_lock = 0;
-    var $cat_child_files = null;
-    var $cat_childs = null;
+    // cat_childs / cat_child_files stay dynamic on purpose: DBSave() treats every
+    // declared cat_* property as a table column.
     var $childs_complete = false;
 
 
