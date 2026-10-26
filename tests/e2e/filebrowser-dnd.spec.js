@@ -21,6 +21,13 @@ async function parentOf(page, type, id) {
 	return (await res.json()).path.split('/').slice(0, -1).join('/'); // '' = root, else cat path
 }
 
+// Put a fixture file back through the server (not the UI), so tests do not depend on each other.
+async function moveBack(page, fileId, catId) {
+	const nonce = await page.evaluate(() => wpfbConf.nonce);
+	const res = await page.request.post(AJAX, { form: { wpfb_action: 'change-category', type: 'file', id: fileId, new_cat_id: catId, _wpfb_nonce: nonce } });
+	expect(await res.json()).toMatchObject({ error: false });
+}
+
 async function expand(page, catId) {
 	const li = page.locator(`#wpfb-cat-${catId}`);
 	if (await li.evaluate((el) => el.classList.contains('expandable'))) {
@@ -113,6 +120,7 @@ test('drop on a stale category id lands at root', async ({ page }) => {
 	expect(await res.json()).toMatchObject({ error: false, cat_id: 0 });
 	expect(await parentOf(page, 'file', ids.file_in_a)).toBe('');
 	await expect(page.locator(`#wpfb-filebrowser-1 > #wpfb-file-${ids.file_in_a}`)).toHaveCount(1);
+	await moveBack(page, ids.file_in_a, ids.cat_a); // leave the fixture as the other tests expect it
 });
 
 test('upload through a folder\'s "+ Add File" lands in that folder', async ({ page }) => {
@@ -143,4 +151,51 @@ test('upload through a folder\'s "+ Add File" lands in that folder', async ({ pa
 	await expect(page.locator(`#wpfb-cat-${ids.cat_a} #wpfb-file-${json.file_id}`)).toBeVisible();
 	await page.request.post(`${AJAX}`, { form: { wpfb_action: 'delete', file_id: json.file_id, _wpfb_nonce: await page.evaluate(() => wpfbConf.nonce) } });
 	expect(await page.request.get(`${AJAX}&wpfb_action=fileinfo&id=${json.file_id}`).then((r) => r.text())).toBe('-1'); // gone
+});
+
+test('an expired nonce is reported, not shown as a move', async ({ page }) => {
+	await page.goto(FB, { waitUntil: 'networkidle' });
+	await page.evaluate(() => { wpfbConf.nonce = 'stale'; });
+	const dialogs = [];
+	page.on('dialog', async (d) => { dialogs.push(d.message()); await d.dismiss(); });
+	const [res] = await Promise.all([
+		page.waitForResponse((r) => (r.request().postData() || '').includes('change-category')),
+		page.locator(`#wpfb-file-${ids.file_root}`).dragTo(page.locator(`#wpfb-cat-${ids.cat_b}`), { targetPosition: { x: 40, y: 8 } }),
+	]);
+	expect(await res.text()).toBe('-1');
+	await expect.poll(() => dialogs.length, { timeout: 3000 }).toBe(1);
+	expect(dialogs[0]).toMatch(/expired|reload/i);
+	await expect(page.locator(`#wpfb-filebrowser-1 > #wpfb-file-${ids.file_root}`)).toHaveCount(1); // row stayed where it was
+	await expect(page.locator(`#wpfb-cat-${ids.cat_b} #wpfb-file-${ids.file_root}`)).toHaveCount(0);
+	expect(await parentOf(page, 'file', ids.file_root)).toBe('');
+});
+
+test('drop onto a folder that was opened and then collapsed still shows the row', async ({ page }) => {
+	await page.goto(FB, { waitUntil: 'networkidle' });
+	await expand(page, ids.cat_b);
+	await page.locator(`#wpfb-cat-${ids.cat_b} > .hitarea`).click(); // collapse (children stay loaded)
+	await expect(page.locator(`#wpfb-cat-${ids.cat_b}`)).toHaveClass(/expandable/);
+	const [res] = await Promise.all([
+		page.waitForResponse((r) => (r.request().postData() || '').includes('change-category')),
+		page.locator(`#wpfb-file-${ids.file_root}`).dragTo(page.locator(`#wpfb-cat-${ids.cat_b}`), { targetPosition: { x: 40, y: 8 } }),
+	]);
+	expect(await res.json()).toMatchObject({ error: false, cat_id: ids.cat_b });
+	await expect(page.locator(`#wpfb-cat-${ids.cat_b} #wpfb-file-${ids.file_root}`)).toBeVisible();
+	await expect(page.locator(`#wpfb-file-${ids.file_root}`)).toHaveCount(1);
+	await moveBack(page, ids.file_root, 0);
+});
+
+test('drop on the blank part of a folder\'s "+ Add" row lands in that folder', async ({ page }) => {
+	await page.goto(FB, { waitUntil: 'networkidle' });
+	await expand(page, ids.cat_a);
+	const addRow = page.locator(`#wpfb-cat-${ids.cat_a} > ul > #wpfb-cat-0`);
+	const box = await addRow.boundingBox();
+	const [res] = await Promise.all([
+		page.waitForResponse((r) => (r.request().postData() || '').includes('change-category')),
+		page.locator(`#wpfb-file-${ids.file_root}`).dragTo(addRow, { targetPosition: { x: box.width - 10, y: 8 } }),
+	]);
+	expect(await res.json()).toMatchObject({ error: false, cat_id: ids.cat_a });
+	expect(await parentOf(page, 'file', ids.file_root)).toBe(ids.cat_a_path);
+	await expect(page.locator(`#wpfb-cat-${ids.cat_a} #wpfb-file-${ids.file_root}`)).toHaveCount(1);
+	await moveBack(page, ids.file_root, 0);
 });

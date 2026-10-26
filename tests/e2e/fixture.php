@@ -42,7 +42,10 @@ if ($cmd === 'teardown') {
         if (!empty($ids[$k]) && ($f = WPFB_File::GetFile($ids[$k]))) $f->Remove();
     }
     foreach (array('cat_a_child', 'cat_b', 'cat_a') as $k) { // deepest first
-        if (!empty($ids[$k]) && ($c = WPFB_Category::GetCat($ids[$k]))) $c->Delete();
+        if (!empty($ids[$k]) && ($c = WPFB_Category::GetCat($ids[$k]))) {
+            foreach ($c->GetChildFiles() as $f) $f->Remove(); // e.g. an upload a failed test left behind
+            $c->Delete();
+        }
     }
     exit(0);
 }

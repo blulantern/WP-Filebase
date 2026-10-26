@@ -123,8 +123,10 @@ class WPFB_TreeviewAdmin
                     url: wpfbConf.ajurl, type: "POST", dataType: "json",
                     data: {wpfb_action: "change-category", new_cat_id: newCatId, id: tid[1], type: tid[0], _wpfb_nonce: wpfbConf.nonce},
                     success: function (data) {
-                        if (!data || data.error) {
-                            alert(data && data.error ? data.error : 'Error');
+                        // A refused request (expired nonce, no permission) comes back as "-1", which
+                        // the JSON parser turns into a number: anything but an object is a failure.
+                        if (!data || 'object' !== typeof data || data.error) {
+                            alert(data && data.error ? data.error : '<?php echo esc_js(__('The move was refused. Your session may have expired: please reload the page and try again.', 'wp-filebase')) ?>');
                             return;
                         }
                         // The server answers with the category it actually used: the root when the
@@ -133,11 +135,14 @@ class WPFB_TreeviewAdmin
                         var toRoot = (catId === base || catId === 0);
                         var cLi = toRoot ? jQuery() : jQuery('#' + idp + 'cat-' + catId);
                         var tUl = toRoot ? tree : cLi.children('ul').first();
-                        if (!toRoot && (cLi.hasClass('expandable') || !cLi.length)) {
+                        if (!toRoot && (cLi.hasClass('hasChildren') || !cLi.length)) {
+                            // never loaded: drop our copy, the (one-time) async load shows the moved row
                             dLi.remove();
-                            jQuery('.hitarea', cLi).first().click(); // reload shows the moved row
+                            jQuery('.hitarea', cLi).first().click();
                         } else if (tUl.length) {
                             dLi.appendTo(tUl);
+                            if (cLi.hasClass('expandable')) // loaded earlier but collapsed: open it
+                                jQuery('.hitarea', cLi).first().click();
                         } else {
                             dLi.remove();
                         }

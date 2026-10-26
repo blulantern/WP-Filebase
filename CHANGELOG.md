@@ -21,6 +21,9 @@
   "+ Add" row; the tree is outlined while it is the target). Dropping an item where it already is,
   or a folder on itself, does nothing. When the target folder was deleted in another tab the row is
   placed where the server actually put it: the `change-category` response now carries `cat_id`.
+  A refused move (expired session) is reported instead of being shown as done; dropping onto a
+  folder that was opened and collapsed earlier shows the row instead of losing it until reload; the
+  blank part of a folder's "+ Add" row targets that folder, not the root.
 - Moving a file out of a folder left the folder's file count unchanged until the next sync (only
   the total was decremented).
 - Deleting a category left it in its parent's in-memory child list; the category select rendered
