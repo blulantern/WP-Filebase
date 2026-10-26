@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- Categories admin page: adding or editing a category with the "Custom Sort Order" box left blank
+  (the way the add form renders it) died mid-page on PHP 8 (`0 + ''` TypeError), so categories
+  could only be created from the File Browser. Numeric form fields are now cast.
+- Categories admin page: the add, update and bulk-delete actions now verify the nonces the forms
+  already carried.
+- Loading the Sync class (every request with `WP_DEBUG` on, and every upload) no longer replaces
+  PHP's error/exception handlers, redirects `error_log` or lifts the time limit; that happens only
+  when a scan actually runs (`WPFB_Sync::BeginRun()`). Fatals in admin pages reach `debug.log` and
+  WordPress' error screen again instead of vanishing into the sync log.
+
+### Tests
+- `tests/smoke/run.php` drives the Categories page over HTTP as the admin (add with blank sort
+  order, edit, bulk delete, forged nonce). Playwright signs in through `tests/e2e/auth.setup.js`
+  (cookies minted by `tests/e2e/mint-cookies.php` when `WP_PASS` is unset) and runs with
+  `reducedMotion: 'reduce'` because WordPress 7.1's cross-document view transitions stall
+  headless Chromium after form submits.
+
 ## 0.4.0 — 2026-10-16
 
 PHP 8.1–8.5 and WordPress 6.6–7.x compatibility fork of the final upstream
