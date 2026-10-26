@@ -117,8 +117,8 @@ function wpfb_newCatInput(el, pid) {
                 jQuery.ajax({url: wpfbConf.ajurl, type: "POST",
                     data: {wpfb_action: 'new-cat', _wpfb_nonce: wpfbConf.nonce, cat_name: cat_name, cat_parent: pid, args: set.ajax.data, is_admin: (typeof (adminpage) !== 'undefined') ? 1 : 0},
                     success: (function (data) {
-                        if (data.error) {
-                            alert(data.error);
+                        if (!data || 'object' !== typeof data || data.error) { // "-1": refused (expired nonce)
+                            alert(data && data.error ? data.error : 'Could not create the category. Your session may have expired: please reload the page and try again.');
                             lip.remove();
                         } else {
                             lip.attr('id', data.id_str)
@@ -181,7 +181,9 @@ function wpfb_fileBrowserTargetId(e, cat_or_file)
 
     var tid = t.prop("id");
     var pl = idp.length + cat_or_file.length;
-    if (t.prop('tagName') === 'LI' && tid.substr(0, pl + 1) === (idp + cat_or_file + "-"))
+    // The row itself, except the inline "+ Add" row (id ...-0): that one belongs to the folder
+    // around it (or the root), which the parents() lookup below resolves.
+    if (t.prop('tagName') === 'LI' && tid.substr(0, pl + 1) === (idp + cat_or_file + "-") && tid !== (idp + cat_or_file + "-0"))
         return parseInt(tid.substr(pl + 1));
     var p = t.parents('li[id^="' + idp + cat_or_file + '-"][id!="' + idp + cat_or_file + '-0"]');
     if (p && p.length)

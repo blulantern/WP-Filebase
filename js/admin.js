@@ -154,8 +154,8 @@ if ('undefined' !== typeof jQuery) {
                         url: wpfbConf.ajurl, type: "POST", dataType: 'json',
                         data: {wpfb_action: 'new-cat', cat_name: cat_name, cat_parent: pid, _wpfb_nonce: wpfbConf.nonce},
                         success: (function (data) {
-                            if (data.error) {
-                                alert(data.error);
+                            if (!data || 'object' !== typeof data || data.error) { // "-1": refused (expired nonce)
+                                alert(data && data.error ? data.error : 'Could not create the category. Your session may have expired: please reload the page and try again.');
                                 s.val(pid);
                             } else {
                                 jQuery('<option value=' + data.id + '>' + o.text().substr(0, o.text().indexOf('+')) + data.name + '</option><option value="+' + data.id + '" class="add-cat">&nbsp;&nbsp; ' + o.text() + '</option>').insertBefore(jQuery('select.wpfb-cat-select').children('option[value="+' + pid + '"]'));
