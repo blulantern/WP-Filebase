@@ -130,6 +130,20 @@ Goto WP-Filebase Settings and disable Permalinks under "Download". Try to disabl
 
 == Changelog ==
 
+= Unreleased =
+* Fixed: File Browser drag & drop in current browsers (Chromium 127+ removed mutation events); rows loaded on expand are draggable again
+* Fixed: dragging a freshly loaded row could move its parent folder instead
+* Added: drag items back out to the root (drop on the tree background or its "+ Add" row); no-op drops are ignored
+* Fixed: moving a file out of a folder did not decrement the folder's file count
+* Fixed: a deleted category lingered in its parent's child list (crash in the category select, folder recreated)
+* Security: state-changing admin AJAX actions require a nonce
+* Fixed: PHP 8.1 deprecations (explode on null, usleep with a float)
+
+= 0.4.0 =
+* PHP 8.1-8.5 and WordPress 6.6-7.x compatibility fork of 0.3.4.24; behaviour, data model and templates unchanged (see CHANGELOG.md)
+* Fixed: Categories admin page could not add or edit a category with a blank sort order on PHP 8
+* Fixed: the Categories page actions verify their nonces; the Sync class no longer replaces PHP's error handlers on load
+
 = 0.3.4.24 =
 * New dashboard
 * Fixed XSS vulnerability
