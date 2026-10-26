@@ -29,7 +29,8 @@ async function expand(page, catId) {
 			li.locator('> .hitarea').click(),
 		]);
 	}
-	await expect(li.locator(`#wpfb-file-${ids.file_in_a}`)).toBeVisible();
+	await expect(li).toHaveClass(/collapsable/); // children loaded and shown
+	await expect(li.locator('> ul > li').first()).toBeVisible();
 }
 
 test('files loaded when a folder expands are draggable', async ({ page }) => {
@@ -112,4 +113,34 @@ test('drop on a stale category id lands at root', async ({ page }) => {
 	expect(await res.json()).toMatchObject({ error: false, cat_id: 0 });
 	expect(await parentOf(page, 'file', ids.file_in_a)).toBe('');
 	await expect(page.locator(`#wpfb-filebrowser-1 > #wpfb-file-${ids.file_in_a}`)).toHaveCount(1);
+});
+
+test('upload through a folder\'s "+ Add File" lands in that folder', async ({ page }) => {
+	await page.goto(FB, { waitUntil: 'networkidle' });
+	await expand(page, ids.cat_a);
+	// Playwright cannot drag OS files. The "+ Add File" link is backed by Plupload's hidden
+	// <input type=file> (a moxie shim laid exactly over the link); feeding that input is what a
+	// click on the link ends in, and it queues the upload with the folder's id.
+	const link = page.locator(`#wpfb-cat-${ids.cat_a} a.add-file`).first();
+	await expect(link).toHaveClass(/file-input/);
+	const inputId = await link.evaluate((a) => {
+		const r = a.getBoundingClientRect();
+		const over = Array.from(document.querySelectorAll('.moxie-shim input[type=file]')).find((i) => {
+			const b = i.getBoundingClientRect();
+			return Math.abs(b.x - r.x) < 4 && Math.abs(b.y - r.y) < 4;
+		});
+		return over ? over.id : null;
+	});
+	expect(inputId, 'a Plupload file input overlays the folder\'s "+ Add File" link').toBeTruthy();
+	const name = `dnd-upload-${Date.now()}.txt`;
+	const [res] = await Promise.all([
+		page.waitForResponse((r) => r.url().includes('wpfb_action=upload')),
+		page.locator(`#${inputId}`).setInputFiles({ name, mimeType: 'text/plain', buffer: Buffer.from('hello\n') }),
+	]);
+	const json = await res.json();
+	expect(json.file_id).toBeGreaterThan(0);
+	expect(await parentOf(page, 'file', json.file_id)).toBe(ids.cat_a_path);
+	await expect(page.locator(`#wpfb-cat-${ids.cat_a} #wpfb-file-${json.file_id}`)).toBeVisible();
+	await page.request.post(`${AJAX}`, { form: { wpfb_action: 'delete', file_id: json.file_id, _wpfb_nonce: await page.evaluate(() => wpfbConf.nonce) } });
+	expect(await page.request.get(`${AJAX}&wpfb_action=fileinfo&id=${json.file_id}`).then((r) => r.text())).toBe('-1'); // gone
 });

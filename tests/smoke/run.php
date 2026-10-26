@@ -177,6 +177,10 @@ step('change-category of an offline file updates the row', dnd_ok($body, $dnd_b_
 $f->Remove();
 fresh_cat($dnd_child_id)->Delete();
 fresh_cat($dnd_b_id)->Delete();
+// fresh_cat()/fresh_file() replaced the cached objects; keep using the cached ones from here on
+// (the old $cat['cat'] still lists the deleted folders as children and would resurrect them).
+$cat['cat'] = fresh_cat($cat_id);
+$file = fresh_file($file->GetId());
 
 // 5. renders
 $html = do_shortcode('[wpfilebase tag=list id=' . $cat_id . ' /]');
