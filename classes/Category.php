@@ -92,7 +92,7 @@ class WPFB_Category extends WPFB_Item
      */
     static function GetCat($id)
     {
-        $id = 0 + $id;
+        $id = (int) $id;
         if ($id > 0 && (isset(self::$cache[$id]) || WPFB_Category::GetCats("WHERE cat_id = $id"))) {
             return self::$cache[$id];
         }
