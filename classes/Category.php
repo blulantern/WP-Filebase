@@ -248,10 +248,14 @@ class WPFB_Category extends WPFB_Item
 
         self::$cache_complete = false;
         unset(self::$cache[0 + $this->cat_id]);
-        // detach from the parent's in-memory child list, or a later GetChildCats() in the same
-        // request (e.g. the category select rendered after a bulk delete) hands out a dead id
-        if ($parent_id > 0 && isset(self::$cache[$parent_id]) && !empty(self::$cache[$parent_id]->cat_childs))
-            unset(self::$cache[$parent_id]->cat_childs[0 + $this->cat_id]);
+        // detach from every cached category's in-memory child list (the current parent and any
+        // former one it was linked under before a move), or a later GetChildCats() in the same
+        // request hands out a dead id: the category select rendered after a bulk delete crashed
+        // on it, and a parent's own Delete() would re-parent the ghost and recreate its folder.
+        foreach (self::$cache as $pc) {
+            if (!empty($pc->cat_childs) && isset($pc->cat_childs[0 + $this->cat_id]))
+                unset($pc->cat_childs[0 + $this->cat_id]);
+        }
 
         // delete the category
         @unlink($this->GetLocalPath());
