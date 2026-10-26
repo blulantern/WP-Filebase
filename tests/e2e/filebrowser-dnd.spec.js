@@ -40,3 +40,25 @@ test('files loaded when a folder expands are draggable', async ({ page }) => {
 	// the inline "+ Add File" link inside the expanded folder got its file input too
 	await expect(page.locator(`#wpfb-cat-${ids.cat_a} a.add-file`).first()).toHaveClass(/file-input/);
 });
+
+test('drag from a node the observer has not armed yet does not move its parent', async ({ page }) => {
+	await page.goto(FB, { waitUntil: 'networkidle' });
+	await expand(page, ids.cat_a);
+	// Simulate the window before the observer's debounced re-arm has run: a freshly loaded row
+	// has neither the attribute nor the handlers yet (its <img>/<a> children are still draggable
+	// by default). Let the debounced re-arms from the expand settle first, then disable the
+	// re-arm so nothing restores them during the drag.
+	await page.waitForTimeout(500);
+	await page.locator(`#wpfb-file-${ids.file_in_a}`).evaluate((el) => {
+		Object.keys(window).filter((k) => k.startsWith('wpfb_fbDOMModHandle')).forEach((k) => { window[k] = function () {}; });
+		el.removeAttribute('draggable');
+		window.jQuery(el).off();
+	});
+	const posts = [];
+	page.on('request', (r) => { if (r.method() === 'POST' && (r.postData() || '').includes('change-category')) posts.push(r.postData()); });
+	await page.locator(`#wpfb-file-${ids.file_in_a}`).dragTo(page.locator(`#wpfb-cat-${ids.cat_b}`), { targetPosition: { x: 40, y: 8 } });
+	await page.waitForTimeout(500);
+	expect(posts, 'no move request may fire').toEqual([]);
+	expect(await parentOf(page, 'cat', ids.cat_a)).toBe(''); // cat A is still at root
+	await expect(page.locator(`#wpfb-cat-${ids.cat_b} #wpfb-cat-${ids.cat_a}`)).toHaveCount(0);
+});

@@ -87,12 +87,22 @@ class WPFB_TreeviewAdmin
                 <?php if ($drag_drop) { ?>
                 jQuery("#<?php echo $id ?> li:not([draggable]):not([id$='-0'])")
                     .attr('draggable', 'true')
-                    .bind('dragend', function (e) {
+                    .on('dragend', function (e) {
                         jQuery(e.currentTarget).removeClass('dragged');
                     })
-                    .bind('dragstart', function (e) {
+                    .on('dragstart', function (e) {
+                        // Only the row this handler belongs to may start its drag. When the pointer
+                        // went down on a descendant <li> that is not (yet) draggable, the browser
+                        // makes this row the drag source (dragstart fires here, e.target is this row
+                        // or a draggable <img>/<a> below it) and the whole folder would move instead
+                        // of the child. Check both the event target and what is under the pointer.
+                        var oe = e.originalEvent || e, under = ('number' === typeof oe.clientX && (oe.clientX || oe.clientY)) ? document.elementFromPoint(oe.clientX, oe.clientY) : null;
+                        if (jQuery(e.target).closest('li')[0] !== this || (under && jQuery(under).closest('li')[0] !== this)) {
+                            e.preventDefault();
+                            return false;
+                        }
                         var li = jQuery(this), t = (li.attr('id').indexOf('-cat-') >= 0 ? 'cat' : 'file'), id = wpfb_fileBrowserTargetId(e, t);
- 
+
                         if (id >= 0) {
                             e.stopPropagation();
                             li.addClass('dragged');
@@ -112,26 +122,24 @@ class WPFB_TreeviewAdmin
                             }
                         }
                     })
-                    .bind('dragenter ', function(e) {
+                    .on('dragenter', function(e) {
                         // open category
                         var li = this;
-                        console.log('start', li.id);
                         li._openTimer = setTimeout(function() {
                             if (jQuery(li).hasClass('expandable'))
                                 jQuery('.hitarea', li).click();
                         }, 600);
                     })
-                    .bind('dragleave', function (e) {
+                    .on('dragleave', function (e) {
                         var li = this;
                         jQuery(li).removeClass('dragover-target');
                         wpfb_fbDragCat<?php echo $jss ?> = 0;
                         if(li._openTimer) {
-                            console.log('stop', li.id);
                             clearTimeout(li._openTimer);
                             li._openTimer = false;
                         }
                     })
-                    .bind('drop', function (e) {
+                    .on('drop', function (e) {
                         var li = jQuery(e.currentTarget), id = wpfb_fileBrowserTargetId(e, 'cat'), dt = e.originalEvent.dataTransfer;
                         if (!wpfb_dtContains(dt, "application/x-wpfilebase-item") && !(wpfb_tvaUseDataText && wpfb_dtContains(dt, "Text")))
                             return true;
