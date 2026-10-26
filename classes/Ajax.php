@@ -244,6 +244,8 @@ class WPFB_Ajax {
         $cat = WPFB_Category::GetCat($args['new_cat_id']);
         if ($item && $item->CurUserCanEdit() && (!$cat || $cat->CurUserCanAddFiles())) {
             $res = $item->ChangeCategoryOrName($args['new_cat_id']);
+            if (empty($res['error'])) // where it ended up (root when the target no longer exists)
+                $res['cat_id'] = (int) $item->GetParentId();
             wp_send_json($res);
         } else {
             wp_send_json(array('error' => __("Sorry, you are not allowed to do that.")));
