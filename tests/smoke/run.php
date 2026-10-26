@@ -119,6 +119,55 @@ file_put_contents($drop, "dropped\n");
 ob_start(); WPFB_Sync::Sync(false, false); ob_end_clean();
 $dropped = WPFB_File::GetByPath($cat['cat']->GetLocalPathRel() . '/dropped.txt');
 step('sync picks up dropped file', $dropped !== null && !empty($dropped->is_file));
+// The in-process scan installed WPFB_Sync's error/exception handlers and pointed error_log at
+// the sync log (WPFB_Sync::BeginRun()). Hand PHP back its own, or a fatal in any later step is
+// written to uploads/filebase/._log-sync-*.txt and this script exits 0 with the steps unrun.
+restore_exception_handler(); restore_error_handler(); @ini_set('error_log', $log);
+
+// 4b. drag & drop persistence: the change-category AJAX action the file browser posts.
+//     Placed here because it moves smoke.txt and counts dropped.txt (the category then keeps 1 file).
+$ajax = admin_url('admin-ajax.php?action=wpfilebase');
+$dnd_t = time();
+$dnd_b = WPFB_Admin::InsertCategory(array('cat_name' => "DnD B $dnd_t", 'cat_folder' => "dnd-b-$dnd_t"));
+$dnd_b_id = $dnd_b['cat']->GetId();
+$dnd_child = WPFB_Admin::InsertCategory(array('cat_name' => "DnD child $dnd_t", 'cat_folder' => "dnd-child-$dnd_t", 'cat_parent' => $cat_id));
+$dnd_child_id = $dnd_child['cat']->GetId();
+function fresh_file($id) { unset(WPFB_File::$cache[$id]); return WPFB_File::GetFile($id); }
+function fresh_cat($id) { unset(WPFB_Category::$cache[$id]); WPFB_Category::$cache_complete = false; return WPFB_Category::GetCat($id); }
+function cat_counts($id) { global $wpdb; return $wpdb->get_row($wpdb->prepare("SELECT cat_num_files, cat_num_files_total FROM {$wpdb->wpfilebase_cats} WHERE cat_id = %d", $id), ARRAY_A); }
+// success body is {"error":false,"cat_id":N} (cat_id = where the item ended up)
+function dnd_ok($body, $cat_id) { $j = json_decode($body, true); return is_array($j) && isset($j['error']) && $j['error'] === false && isset($j['cat_id']) && (int) $j['cat_id'] === (int) $cat_id; }
+
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'file', 'id' => $file->GetId(), 'new_cat_id' => $dnd_b_id));
+$f = fresh_file($file->GetId());
+step('change-category file -> folder', $code === 200 && dnd_ok($body, $dnd_b_id) && (int) $f->file_category === $dnd_b_id
+    && $f->file_path === "dnd-b-$dnd_t/smoke.txt" && is_file($f->GetLocalPath()) && cat_counts($dnd_b_id)['cat_num_files'] === '1' && cat_counts($cat_id)['cat_num_files'] === '1',
+    "body=$body path={$f->file_path} counts=" . json_encode(array(cat_counts($dnd_b_id), cat_counts($cat_id))));
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'file', 'id' => $file->GetId(), 'new_cat_id' => 0));
+$f = fresh_file($file->GetId());
+step('change-category file -> root', dnd_ok($body, 0) && (int) $f->file_category === 0 && $f->file_path === 'smoke.txt' && is_file($f->GetLocalPath()) && cat_counts($dnd_b_id)['cat_num_files'] === '0', "body=$body path={$f->file_path}");
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'file', 'id' => $file->GetId(), 'new_cat_id' => $cat_id));
+$f = fresh_file($file->GetId());
+step('change-category file back home', dnd_ok($body, $cat_id) && (int) $f->file_category === $cat_id && is_file($f->GetLocalPath()), "body=$body");
+
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'cat', 'id' => $dnd_b_id, 'new_cat_id' => $cat_id));
+$c = fresh_cat($dnd_b_id);
+step('change-category folder -> folder', dnd_ok($body, $cat_id) && (int) $c->cat_parent === $cat_id && $c->cat_path === $cat['cat']->GetLocalPathRel() . "/dnd-b-$dnd_t" && is_dir($c->GetLocalPath()), "body=$body path={$c->cat_path}");
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'cat', 'id' => $cat_id, 'new_cat_id' => $dnd_child_id));
+$c = fresh_cat($cat_id);
+step('change-category rejects moving a category into its descendant', strpos($body, 'sub-category of itself') !== false && (int) $c->cat_parent === 0, "body=$body");
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'cat', 'id' => $dnd_b_id, 'new_cat_id' => 0));
+$c = fresh_cat($dnd_b_id);
+step('change-category folder -> root', dnd_ok($body, 0) && (int) $c->cat_parent === 0 && $c->cat_path === "dnd-b-$dnd_t" && is_dir($c->GetLocalPath()), "body=$body path={$c->cat_path}");
+
+$off = WPFB_Admin::InsertFile(array('file_category' => $cat_id, 'file_remote_uri' => $base . '/license.txt', 'file_rename' => "offline-$dnd_t.txt"));
+@unlink($off['file']->GetLocalPath());
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'file', 'id' => $off['file']->GetId(), 'new_cat_id' => $dnd_b_id));
+$f = fresh_file($off['file']->GetId());
+step('change-category of an offline file updates the row', dnd_ok($body, $dnd_b_id) && (int) $f->file_category === $dnd_b_id && $f->file_path === "dnd-b-$dnd_t/offline-$dnd_t.txt", "body=$body path={$f->file_path}");
+$f->Remove();
+fresh_cat($dnd_child_id)->Delete();
+fresh_cat($dnd_b_id)->Delete();
 
 // 5. renders
 $html = do_shortcode('[wpfilebase tag=list id=' . $cat_id . ' /]');
