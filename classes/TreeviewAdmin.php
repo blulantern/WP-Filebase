@@ -85,18 +85,6 @@ class WPFB_TreeviewAdmin
                 wpfb_fbDOMModTimeout<?php echo $jss ?> = -1;
 
                 <?php if ($drag_drop) { ?>
-                jQuery("#<?php echo $id ?>").bind('dragover', function (e) {
-                    if(e.target.id != '<?php echo $id ?>')
-                        return;
-                    var params = wpfb_getFileBrowserParams('<?php echo $id ?>');
-                    wpfb_fbDragCat<?php echo $jss ?> = params.base || 0;
-                });
-
-
-
-
-                //jQuery("#<?php echo $id ?> li[id^='wpfb-cat-']:not([draggable]):not([id$='-0'])").bind('dragover', dragOverHandler);
-
                 jQuery("#<?php echo $id ?> li:not([draggable]):not([id$='-0'])")
                     .attr('draggable', 'true')
                     .bind('dragend', function (e) {
@@ -210,17 +198,30 @@ class WPFB_TreeviewAdmin
 
             jQuery(document).ready(function () {
 
-                jQuery("#<?php echo $id ?>").bind('dragover', dragOverHandler);
+                jQuery("#<?php echo $id ?>").on('dragover', dragOverHandler);
 
                 wpfb_fbDragCat<?php echo $jss ?> = 0;
-                jQuery("#<?php echo $id ?>")
-                    .bind("DOMSubtreeModified", function (e) {
+                // Re-arm drag handles / inline add buttons whenever the tree changes (async loads,
+                // inline new category, uploads). Mutation events (DOMSubtreeModified) are gone from
+                // Chromium 127+, so observe the subtree instead; same 100 ms debounce as before.
+                var wpfb_fbTree<?php echo $jss ?> = document.getElementById('<?php echo $id ?>');
+                if (wpfb_fbTree<?php echo $jss ?> && 'undefined' !== typeof MutationObserver) {
+                    new MutationObserver(function () {
                         if (wpfb_fbDOMModTimeout<?php echo $jss ?> >= 0)
                             window.clearTimeout(wpfb_fbDOMModTimeout<?php echo $jss ?>);
                         wpfb_fbDOMModTimeout<?php echo $jss ?> = window.setTimeout(wpfb_fbDOMModHandle<?php echo $jss ?>, 100);
-                    })
+                    }).observe(wpfb_fbTree<?php echo $jss ?>, {childList: true, subtree: true});
+                }
+                jQuery("#<?php echo $id ?>")
                     <?php if ($drag_drop) { ?>
-                    .bind('dragleave', function (e) {
+                    .on('dragover', function (e) {
+                        // pointer over the tree background: the drop target is this browser's root
+                        if (e.target.id != '<?php echo $id ?>')
+                            return;
+                        var params = wpfb_getFileBrowserParams('<?php echo $id ?>');
+                        wpfb_fbDragCat<?php echo $jss ?> = params.base || 0;
+                    })
+                    .on('dragleave', function (e) {
                         var idp = wpfb_getFileBrowserIDP('<?php echo $id ?>');
                         jQuery('#' + idp + 'cat-' + wpfb_fbDragCat<?php echo $jss ?>).removeClass('dragover-target');
                         wpfb_fbDragCat<?php echo $jss ?> = 0;
