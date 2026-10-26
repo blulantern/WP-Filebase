@@ -781,8 +781,11 @@ class WPFB_Item
             if (!empty($all_files))
                 foreach ($all_files as $file) {
                     if ($cat_changed) {
+                        // notify parent cat to remove files. A moved file already carries its new
+                        // file_category here, so tell the old category explicitly that this file
+                        // was one of its own (otherwise only cat_num_files_total is decremented).
                         if ($old_cat)
-                            $old_cat->NotifyFileRemoved($file); // notify parent cat to remove files
+                            $old_cat->NotifyFileRemoved($file, $this->is_file && $file->GetId() == $this->GetId());
                         if ($new_cat)
                             $new_cat->NotifyFileAdded($file);
                     }
