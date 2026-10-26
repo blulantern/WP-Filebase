@@ -123,7 +123,7 @@ function wpfb_setupFormAutoSave(form)
 	// serialization (save/load)
 	theForm.find('*[name^="file_"]').prop('disabled',true).change(function(){
 		var formData = theForm.serialize().replace(/file_user_roles%5B%5D=.+?&/gi,''); // fix: remove user roles, serialization does not work properly!
-		jQuery.ajax({url: wpfbConf.ajurl, type:"POST", data:{wpfb_action:'set-user-setting',name:settingName,value: formData }});
+		jQuery.ajax({url: wpfbConf.ajurl, type:"POST", data:{wpfb_action:'set-user-setting',name:settingName,value: formData, _wpfb_nonce: wpfbConf.nonce }});
 	});	
 	jQuery.ajax({url: wpfbConf.ajurl, data:{wpfb_action:'get-user-setting',name:settingName}, dataType:'json', success: (function(data){
 			theForm.find('*[name^="file_"]').prop('disabled', false);

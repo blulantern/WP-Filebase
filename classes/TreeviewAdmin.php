@@ -121,7 +121,7 @@ class WPFB_TreeviewAdmin
                 tLi.css({cursor: 'wait'});
                 jQuery.ajax({
                     url: wpfbConf.ajurl, type: "POST", dataType: "json",
-                    data: {wpfb_action: "change-category", new_cat_id: newCatId, id: tid[1], type: tid[0]},
+                    data: {wpfb_action: "change-category", new_cat_id: newCatId, id: tid[1], type: tid[0], _wpfb_nonce: wpfbConf.nonce},
                     success: function (data) {
                         if (!data || data.error) {
                             alert(data && data.error ? data.error : 'Error');

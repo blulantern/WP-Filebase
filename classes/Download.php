@@ -720,7 +720,7 @@ class WPFB_Download
                 $dt = (microtime(true) - $ts) * 1000; // dt = time delta in ms
                 $st = ($nbytes / $bandwidth) - $dt;
                 if ($st > 0) {
-                    usleep($st * 1000);
+                    usleep((int) ($st * 1000)); // float arg is deprecated on PHP 8.1+
                 }
 
                 $cur += $nbytes;

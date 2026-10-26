@@ -53,7 +53,7 @@
             function wpfbFBDelete(e) {
                 e.stopPropagation();
                 var t = jQuery(e.currentTarget).parents('li').first(), tv = t.parents('.treeview').first(), tid = t.attr('id').split('-');
-                var d = {wpfb_action: 'delete'};
+                var d = {wpfb_action: 'delete', _wpfb_nonce: wpfbConf.nonce};
                 var id = +tid[tid.length - 1];
                 var itemType = tid[tid.length - 2];
                 d[itemType + '_id'] = id;

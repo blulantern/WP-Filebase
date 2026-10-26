@@ -28,7 +28,8 @@ class WPFB_Output
             'fb' => WPFB_Core::GetPostUrl(WPFB_Core::$settings->file_browser_post_id),
             'cm' => (int)$context_menu,
             'ajurl' => WPFB_Core::$ajax_url,
-            'ajurlpub' => WPFB_Core::$ajax_url_public
+            'ajurlpub' => WPFB_Core::$ajax_url_public,
+            'nonce' => is_user_logged_in() ? wp_create_nonce('wpfb-admin-ajax') : '', // for the state-changing admin AJAX actions
         );
 
         if ($context_menu) {
