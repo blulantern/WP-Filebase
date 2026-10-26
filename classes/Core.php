@@ -386,7 +386,7 @@ class WPFB_Core
     {
         wpfb_loadclass('Output');
         $sql = $attach_order ? ("`" . ($for_cat ? 'cat_order' : 'file_attach_order') . "` ASC, ") : "";
-        foreach (explode(',', $sort) as $s) {
+        foreach (explode(',', (string) $sort) as $s) { // null on PHP 8.1+ is deprecated
             list($sf, $sd) = WPFB_Output::ParseSorting($s, $for_cat);
             $sql .= "`" . esc_sql($sf) . "` $sd, ";
         }

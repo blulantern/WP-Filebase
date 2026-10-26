@@ -169,13 +169,21 @@ class WPFB_Category extends WPFB_Item
         }
     }
 
-    function NotifyFileRemoved($file)
+    /**
+     * @param WPFB_File $file
+     * @param bool|null $direct whether $file was a direct child of this category; defaults to
+     *                          looking at $file->file_category, which is already the new category
+     *                          when a file is being moved (see WPFB_Item::ChangeCategoryOrName()).
+     */
+    function NotifyFileRemoved($file, $direct = null)
     {
         if (self::$no_bubble)
             return;
 
 
-        if ($file->file_category == $this->cat_id) {
+        if (is_null($direct))
+            $direct = ($file->file_category == $this->cat_id);
+        if ($direct) {
             $this->cat_num_files--;
         }
         $this->cat_num_files_total--;
@@ -240,6 +248,10 @@ class WPFB_Category extends WPFB_Item
 
         self::$cache_complete = false;
         unset(self::$cache[0 + $this->cat_id]);
+        // detach from the parent's in-memory child list, or a later GetChildCats() in the same
+        // request (e.g. the category select rendered after a bulk delete) hands out a dead id
+        if ($parent_id > 0 && isset(self::$cache[$parent_id]) && !empty(self::$cache[$parent_id]->cat_childs))
+            unset(self::$cache[$parent_id]->cat_childs[0 + $this->cat_id]);
 
         // delete the category
         @unlink($this->GetLocalPath());

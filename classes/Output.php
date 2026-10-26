@@ -405,7 +405,7 @@ class WPFB_Output
     static function ParseSelOpts($opt_name, $sel_tags, $uris = false)
     {
         $outarr = array();
-        $opts = explode("\n", WPFB_Core::GetOpt($opt_name));
+        $opts = explode("\n", (string) WPFB_Core::GetOpt($opt_name)); // unset option => null
         if (!is_array($sel_tags))
             $sel_tags = explode('|', $sel_tags);
 
@@ -512,6 +512,8 @@ class WPFB_Output
                 $out .= '<option value="+0" class="add-cat">+ ' . __('Add Category', 'wp-filebase') . '</option>';
         } else {
             $cat = WPFB_Category::GetCat($root_cat_id);
+            if (!$cat) // gone (deleted earlier in this request)
+                return '';
             $can_add = $cat->CurUserCanAddFiles();
 
             $out .= '<option value="' . $root_cat_id . '"'
