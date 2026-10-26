@@ -29,6 +29,13 @@ function admin_cookie_header() {
     }
     return $h;
 }
+// A nonce the HTTP session above will accept: WordPress ties nonces to the session token carried by
+// the logged_in cookie, so mint it with that cookie in place (there is none on the CLI otherwise).
+function admin_nonce($action) {
+    static $primed = false;
+    if (!$primed) { preg_match('/' . preg_quote(LOGGED_IN_COOKIE, '/') . '=([^;]+)/', admin_cookie_header(), $m); $_COOKIE[LOGGED_IN_COOKIE] = $m[1]; $primed = true; }
+    return wp_create_nonce($action);
+}
 function admin_get($url) { return http(site_url_for($url), array(admin_cookie_header())); }
 function admin_post($url, array $fields) {
     $ch = curl_init(site_url_for($url));
@@ -138,31 +145,33 @@ function cat_counts($id) { global $wpdb; return $wpdb->get_row($wpdb->prepare("S
 // success body is {"error":false,"cat_id":N} (cat_id = where the item ended up)
 function dnd_ok($body, $cat_id) { $j = json_decode($body, true); return is_array($j) && isset($j['error']) && $j['error'] === false && isset($j['cat_id']) && (int) $j['cat_id'] === (int) $cat_id; }
 
-list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'file', 'id' => $file->GetId(), 'new_cat_id' => $dnd_b_id));
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'file', 'id' => $file->GetId(), 'new_cat_id' => $dnd_b_id)); // no nonce
+step('change-category without nonce is refused', $body === '-1' && (int) fresh_file($file->GetId())->file_category === $cat_id, "body=$body");
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'file', 'id' => $file->GetId(), 'new_cat_id' => $dnd_b_id, '_wpfb_nonce' => admin_nonce('wpfb-admin-ajax')));
 $f = fresh_file($file->GetId());
 step('change-category file -> folder', $code === 200 && dnd_ok($body, $dnd_b_id) && (int) $f->file_category === $dnd_b_id
     && $f->file_path === "dnd-b-$dnd_t/smoke.txt" && is_file($f->GetLocalPath()) && cat_counts($dnd_b_id)['cat_num_files'] === '1' && cat_counts($cat_id)['cat_num_files'] === '1',
     "body=$body path={$f->file_path} counts=" . json_encode(array(cat_counts($dnd_b_id), cat_counts($cat_id))));
-list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'file', 'id' => $file->GetId(), 'new_cat_id' => 0));
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'file', 'id' => $file->GetId(), 'new_cat_id' => 0, '_wpfb_nonce' => admin_nonce('wpfb-admin-ajax')));
 $f = fresh_file($file->GetId());
 step('change-category file -> root', dnd_ok($body, 0) && (int) $f->file_category === 0 && $f->file_path === 'smoke.txt' && is_file($f->GetLocalPath()) && cat_counts($dnd_b_id)['cat_num_files'] === '0', "body=$body path={$f->file_path}");
-list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'file', 'id' => $file->GetId(), 'new_cat_id' => $cat_id));
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'file', 'id' => $file->GetId(), 'new_cat_id' => $cat_id, '_wpfb_nonce' => admin_nonce('wpfb-admin-ajax')));
 $f = fresh_file($file->GetId());
 step('change-category file back home', dnd_ok($body, $cat_id) && (int) $f->file_category === $cat_id && is_file($f->GetLocalPath()), "body=$body");
 
-list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'cat', 'id' => $dnd_b_id, 'new_cat_id' => $cat_id));
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'cat', 'id' => $dnd_b_id, 'new_cat_id' => $cat_id, '_wpfb_nonce' => admin_nonce('wpfb-admin-ajax')));
 $c = fresh_cat($dnd_b_id);
 step('change-category folder -> folder', dnd_ok($body, $cat_id) && (int) $c->cat_parent === $cat_id && $c->cat_path === $cat['cat']->GetLocalPathRel() . "/dnd-b-$dnd_t" && is_dir($c->GetLocalPath()), "body=$body path={$c->cat_path}");
-list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'cat', 'id' => $cat_id, 'new_cat_id' => $dnd_child_id));
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'cat', 'id' => $cat_id, 'new_cat_id' => $dnd_child_id, '_wpfb_nonce' => admin_nonce('wpfb-admin-ajax')));
 $c = fresh_cat($cat_id);
 step('change-category rejects moving a category into its descendant', strpos($body, 'sub-category of itself') !== false && (int) $c->cat_parent === 0, "body=$body");
-list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'cat', 'id' => $dnd_b_id, 'new_cat_id' => 0));
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'cat', 'id' => $dnd_b_id, 'new_cat_id' => 0, '_wpfb_nonce' => admin_nonce('wpfb-admin-ajax')));
 $c = fresh_cat($dnd_b_id);
 step('change-category folder -> root', dnd_ok($body, 0) && (int) $c->cat_parent === 0 && $c->cat_path === "dnd-b-$dnd_t" && is_dir($c->GetLocalPath()), "body=$body path={$c->cat_path}");
 
 $off = WPFB_Admin::InsertFile(array('file_category' => $cat_id, 'file_remote_uri' => $base . '/license.txt', 'file_rename' => "offline-$dnd_t.txt"));
 @unlink($off['file']->GetLocalPath());
-list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'file', 'id' => $off['file']->GetId(), 'new_cat_id' => $dnd_b_id));
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'file', 'id' => $off['file']->GetId(), 'new_cat_id' => $dnd_b_id, '_wpfb_nonce' => admin_nonce('wpfb-admin-ajax')));
 $f = fresh_file($off['file']->GetId());
 step('change-category of an offline file updates the row', dnd_ok($body, $dnd_b_id) && (int) $f->file_category === $dnd_b_id && $f->file_path === "dnd-b-$dnd_t/offline-$dnd_t.txt", "body=$body path={$f->file_path}");
 $f->Remove();

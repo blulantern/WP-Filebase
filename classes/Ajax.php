@@ -53,6 +53,13 @@ class WPFB_Ajax {
                 //'postbrowser' => '',
                 //rsync-browser
         );
+        // State-changing actions need the nonce PrintJS() hands out as wpfbConf.nonce (field
+        // _wpfb_nonce), so a logged-in admin's browser cannot be made to fire them from elsewhere.
+        $mutating = array('delete', 'change-category', 'new-cat', 'attach-file', 'set-user-setting', 'toggle-context-menu');
+        if (!empty($_REQUEST['wpfb_action']) && in_array($_REQUEST['wpfb_action'], $mutating, true)
+            && !check_ajax_referer('wpfb-admin-ajax', '_wpfb_nonce', false)) {
+            die('-1');
+        }
         self::dispatchAction($public_actions);
     }
 

@@ -31,7 +31,7 @@ static function AdminBar() {
 	
 	if($is_filebrowser) {
 		$wp_admin_bar->add_menu(array('parent' => WPFB, 'id' => WPFB.'-toggle-drag-drop', 'title' => get_user_option('wpfb_set_fbdd') ? __('Disable file browser Drag &amp; Drop','wp-filebase') : __('Enable file browser Drag &amp; Drop','wp-filebase'), 'href' => 'javascript:;',
-		'meta' => array('onclick' => 'jQuery.ajax({url:wpfbConf.ajurl,type:"POST",data:{wpfb_action:"set-user-setting",name:"fbdd",value:'.(get_user_option('wpfb_set_fbdd')?0:1).'},async:false});location.reload();return false;')));
+		'meta' => array('onclick' => 'jQuery.ajax({url:wpfbConf.ajurl,type:"POST",data:{wpfb_action:"set-user-setting",_wpfb_nonce:wpfbConf.nonce,name:"fbdd",value:'.(get_user_option('wpfb_set_fbdd')?0:1).'},async:false});location.reload();return false;')));
 	}
 	
 }

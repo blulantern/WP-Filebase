@@ -152,7 +152,7 @@ if ('undefined' !== typeof jQuery) {
                     inp.prop('disabled', true).addClass('loading');
                     jQuery.ajax({
                         url: wpfbConf.ajurl, type: "POST", dataType: 'json',
-                        data: {wpfb_action: 'new-cat', cat_name: cat_name, cat_parent: pid},
+                        data: {wpfb_action: 'new-cat', cat_name: cat_name, cat_parent: pid, _wpfb_nonce: wpfbConf.nonce},
                         success: (function (data) {
                             if (data.error) {
                                 alert(data.error);
