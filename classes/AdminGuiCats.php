@@ -66,12 +66,15 @@ class WPFB_AdminGuiCats {
                 $file_category = WPFB_Category::GetCat($cat_id);
                 if (is_null($file_category) || !$file_category->CurUserCanEdit())
                     wp_die(__('Cheatin&#8217; uh?'));
+                check_admin_referer(WPFB . '-updatecat' . $cat_id, 'wpfb-cat-nonce');
 
             case 'addcat':
                 $update = !empty($update);
 
                 if (!$update && !WPFB_Core::CurUserCanCreateCat())
                     wp_die(__('Cheatin&#8217; uh?'));
+                if (!$update)
+                    check_admin_referer(WPFB . '-addcat', 'wpfb-cat-nonce');
 
                 $result = WPFB_Admin::InsertCategory(array_merge(stripslashes_deep($_POST), $_FILES));
                 if (isset($result['error']) && $result['error']) {
@@ -84,6 +87,7 @@ class WPFB_AdminGuiCats {
 
             default:
                 if (!empty($_POST['deleteit'])) {
+                    check_admin_referer('bulk-categories');
                     foreach ((array) $_POST['delete'] as $cat_id) {
                         if (is_object($cat = WPFB_Category::GetCat($cat_id)) && $cat->CurUserCanEdit())
                             $cat->Delete();

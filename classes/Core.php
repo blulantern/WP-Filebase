@@ -95,10 +95,6 @@ class WPFB_Core
         }
 
 
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            wpfb_loadclass('Sync'); // load the sync class for error handling
-        }
-
         if (!empty($_GET['wpfb_upload_file']) || !empty($_GET['wpfb_add_cat'])) {            
             wpfb_call('Admin', empty($_GET['wpfb_upload_file']) ? 'ProcessWidgetAddCat' : 'ProcessWidgetUpload');
         }
@@ -390,7 +386,7 @@ class WPFB_Core
     {
         wpfb_loadclass('Output');
         $sql = $attach_order ? ("`" . ($for_cat ? 'cat_order' : 'file_attach_order') . "` ASC, ") : "";
-        foreach (explode(',', $sort) as $s) {
+        foreach (explode(',', (string) $sort) as $s) { // null on PHP 8.1+ is deprecated
             list($sf, $sd) = WPFB_Output::ParseSorting($s, $for_cat);
             $sql .= "`" . esc_sql($sf) . "` $sd, ";
         }

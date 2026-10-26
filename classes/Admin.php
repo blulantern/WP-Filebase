@@ -79,9 +79,9 @@ class WPFB_Admin {
 		$cat->cat_name = trim($cat_name);
 		$cat->cat_description = trim($cat_description);
 		$cat->cat_exclude_browser = (int) !empty($cat_exclude_browser);
-		$cat->cat_order = 0 + ($cat_order);
+		$cat->cat_order = (int) $cat_order; // form field may be blank; 0 + '' is a TypeError on PHP 8
 		if ($data->cat_wp_term_id > -1)
-			$cat->cat_wp_term_id = 0 + $data->cat_wp_term_id;
+			$cat->cat_wp_term_id = (int) $data->cat_wp_term_id;
 
 
 		// handle parent cat
@@ -334,7 +334,7 @@ class WPFB_Admin {
 			$file->file_display_name = $result['title'];
 
 		// handle category & name
-		$file_category = isset($data->file_category) ? (is_object($data->file_category) ? $data->file_category->GetId() : (0 + $data->file_category)) : 0;
+		$file_category = isset($data->file_category) ? (is_object($data->file_category) ? $data->file_category->GetId() : (int) $data->file_category) : 0;
 		$new_cat = null;
 		if ($file_category > 0 && ($new_cat = WPFB_Category::GetCat($file_category)) == null)
 			$file_category = 0;

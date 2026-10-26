@@ -16,10 +16,35 @@ function step($name, $ok, $detail = '') { global $fails; echo ($ok ? "PASS" : "F
 function http($url, $headers = array()) {
     $ch = curl_init($url);
     curl_setopt_array($ch, array(CURLOPT_RETURNTRANSFER => true, CURLOPT_HEADER => true, CURLOPT_HTTPHEADER => $headers));
-    $raw = curl_exec($ch); $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE); $hlen = curl_getinfo($ch, CURLINFO_HEADER_SIZE); curl_close($ch);
+    $raw = curl_exec($ch); $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE); $hlen = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
     return array($code, substr($raw, 0, $hlen), substr($raw, $hlen));
 }
 function site_url_for($url) { global $base; return str_replace(home_url(), $base, $url); }
+// Admin session for HTTP-level checks of the admin pages: mint the auth cookies for user 1.
+function admin_cookie_header() {
+    static $h = null;
+    if ($h === null) {
+        $exp = time() + DAY_IN_SECONDS;
+        $h = 'Cookie: ' . AUTH_COOKIE . '=' . wp_generate_auth_cookie(1, $exp, 'auth') . '; ' . LOGGED_IN_COOKIE . '=' . wp_generate_auth_cookie(1, $exp, 'logged_in');
+    }
+    return $h;
+}
+// A nonce the HTTP session above will accept: WordPress ties nonces to the session token carried by
+// the logged_in cookie, so mint it with that cookie in place (there is none on the CLI otherwise).
+function admin_nonce($action) {
+    static $primed = false;
+    if (!$primed) { preg_match('/' . preg_quote(LOGGED_IN_COOKIE, '/') . '=([^;]+)/', admin_cookie_header(), $m); $_COOKIE[LOGGED_IN_COOKIE] = $m[1]; $primed = true; }
+    return wp_create_nonce($action);
+}
+function admin_get($url) { return http(site_url_for($url), array(admin_cookie_header())); }
+function admin_post($url, array $fields) {
+    $ch = curl_init(site_url_for($url));
+    curl_setopt_array($ch, array(CURLOPT_RETURNTRANSFER => true, CURLOPT_HEADER => true, CURLOPT_HTTPHEADER => array(admin_cookie_header()),
+        CURLOPT_POST => true, CURLOPT_POSTFIELDS => $fields)); // array => multipart/form-data, like the browser
+    $raw = curl_exec($ch); $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE); $hlen = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    return array($code, substr($raw, 0, $hlen), substr($raw, $hlen));
+}
+function form_nonce($html, $field) { return preg_match('/name="' . preg_quote($field, '/') . '" value="([^"]+)"/', $html, $m) ? $m[1] : ''; }
 
 $log = WP_CONTENT_DIR . '/debug.log';
 file_put_contents($log, '');
@@ -32,6 +57,10 @@ $r = activate_plugin('wp-filebase/wp-filebase.php');
 step('activate', !is_wp_error($r), is_wp_error($r) ? $r->get_error_message() : '');
 wp_set_current_user(1);
 wpfb_loadclass('Core', 'Admin', 'File', 'Category', 'Sync', 'Output', 'Search', 'Compat');
+// Loading the Sync class must not hijack PHP's exception handler on an ordinary request:
+// a fatal in an admin page would otherwise vanish into the plugin's sync log instead of debug.log.
+$prev_handler = set_exception_handler(null);
+step('loading Sync leaves the exception handler alone', !(is_array($prev_handler) && ($prev_handler[0] ?? null) === 'WPFB_Sync'), is_array($prev_handler) ? implode('::', $prev_handler) : '');
 WPFB_Core::$settings = (object) get_option(WPFB_OPT_NAME);
 
 // 2. category
@@ -39,6 +68,45 @@ $cat = WPFB_Admin::InsertCategory(array('cat_name' => 'Smoke ' . time(), 'cat_fo
 step('create category', empty($cat['error']) && !empty($cat['cat']), $cat['error'] ?? '');
 if (empty($cat['cat'])) { echo "cannot continue without a category\n"; exit(1); }
 $cat_id = $cat['cat']->GetId();
+
+// 2b. the Categories admin page, over HTTP, exactly as the browser submits it (multipart, the
+//     "Custom Sort Order" box left blank the way the add form renders it).
+$cats_url = admin_url('admin.php?page=wpfilebase_cats');
+list($code, , $html) = admin_get($cats_url);
+$nonce = form_nonce($html, 'wpfb-cat-nonce');
+step('cats page renders add form', $code === 200 && strpos($html, 'id="addcat"') !== false && $nonce !== '', "code=$code");
+$http_cat_name = 'Smoke HTTP ' . time();
+list($code, , $html) = admin_post($cats_url, array('action' => 'addcat', 'cat_id' => '0', 'wpfb-cat-nonce' => $nonce,
+    'cat_name' => $http_cat_name, 'cat_folder' => '', 'cat_parent' => '0', 'cat_description' => '', 'cat_perm_explicit' => '0', 'cat_order' => '', 'submit' => 'Add New Category'));
+$http_cat = null;
+foreach (WPFB_Category::GetCats("WHERE cat_name = '" . esc_sql($http_cat_name) . "'") as $c) { $http_cat = $c; }
+step('cats page add (blank sort order)', $code === 200 && strpos($html, 'Category added.') !== false && $http_cat !== null, "code=$code len=" . strlen($html));
+list($code, , $html) = admin_post($cats_url, array('action' => 'addcat', 'cat_id' => '0', 'wpfb-cat-nonce' => 'deadbeef00',
+    'cat_name' => $http_cat_name . ' forged', 'cat_parent' => '0', 'cat_perm_explicit' => '0', 'cat_order' => '0'));
+$forged = WPFB_Category::GetCats("WHERE cat_name = '" . esc_sql($http_cat_name . ' forged') . "'");
+// The page handles its actions while rendering, after the admin header went out, so wp_die() cannot
+// change the status line any more: the rejection shows as WordPress' "link has expired" page.
+step('cats page rejects a bad nonce', count($forged) === 0 && ($code === 403 || stripos($html, 'expired') !== false), "code=$code");
+foreach ($forged as $c) { $c->Delete(); }
+if ($http_cat) {
+    list($code, , $html) = admin_get(add_query_arg(array('action' => 'editcat', 'cat_id' => $http_cat->GetId()), $cats_url));
+    $nonce = form_nonce($html, 'wpfb-cat-nonce');
+    step('cats page renders edit form', $code === 200 && strpos($html, 'id="editcat"') !== false && $nonce !== '', "code=$code");
+    list($code, , $html) = admin_post($cats_url, array('action' => 'updatecat', 'cat_id' => (string) $http_cat->GetId(), 'wpfb-cat-nonce' => $nonce,
+        'cat_name' => $http_cat_name . ' edited', 'cat_folder' => $http_cat->cat_folder, 'cat_parent' => (string) $cat_id, 'cat_description' => 'edited',
+        'cat_perm_explicit' => '1', 'cat_order' => '', 'submit' => 'Update'));
+    unset(WPFB_Category::$cache[$http_cat->GetId()]); WPFB_Category::$cache_complete = false; // this process cached the pre-update row
+    $edited = WPFB_Category::GetCat($http_cat->GetId());
+    step('cats page edit (blank sort order, new parent)', $code === 200 && strpos($html, 'Category updated.') !== false
+        && $edited && $edited->cat_name === $http_cat_name . ' edited' && (int) $edited->cat_parent === $cat_id && is_dir($edited->GetLocalPath()),
+        "code=$code parent=" . ($edited ? $edited->cat_parent : '?') . ' path=' . ($edited ? $edited->GetLocalPathRel() : '?'));
+    list($code, , $html) = admin_get($cats_url);
+    list($code, , $html) = admin_post($cats_url, array('deleteit' => 'Delete', 'delete' => array((string) $http_cat->GetId()), '_wpnonce' => form_nonce($html, '_wpnonce')));
+    WPFB_Category::$cache_complete = false; unset(WPFB_Category::$cache[$http_cat->GetId()]);
+    $gone = count(WPFB_Category::GetCats('WHERE cat_id = ' . (int) $http_cat->GetId())) === 0;
+    step('cats page bulk delete', $code === 200 && $gone, "code=$code");
+    if (!$gone) { $http_cat->Delete(); }
+}
 
 // 3. upload via admin API. InsertFile() only accepts is_uploaded_file() temp files for
 //    form uploads, so from the CLI we use the remote-URI branch (same validation, sideloads
@@ -58,6 +126,61 @@ file_put_contents($drop, "dropped\n");
 ob_start(); WPFB_Sync::Sync(false, false); ob_end_clean();
 $dropped = WPFB_File::GetByPath($cat['cat']->GetLocalPathRel() . '/dropped.txt');
 step('sync picks up dropped file', $dropped !== null && !empty($dropped->is_file));
+// The in-process scan installed WPFB_Sync's error/exception handlers and pointed error_log at
+// the sync log (WPFB_Sync::BeginRun()). Hand PHP back its own, or a fatal in any later step is
+// written to uploads/filebase/._log-sync-*.txt and this script exits 0 with the steps unrun.
+restore_exception_handler(); restore_error_handler(); @ini_set('error_log', $log);
+
+// 4b. drag & drop persistence: the change-category AJAX action the file browser posts.
+//     Placed here because it moves smoke.txt and counts dropped.txt (the category then keeps 1 file).
+$ajax = admin_url('admin-ajax.php?action=wpfilebase');
+$dnd_t = time();
+$dnd_b = WPFB_Admin::InsertCategory(array('cat_name' => "DnD B $dnd_t", 'cat_folder' => "dnd-b-$dnd_t"));
+$dnd_b_id = $dnd_b['cat']->GetId();
+$dnd_child = WPFB_Admin::InsertCategory(array('cat_name' => "DnD child $dnd_t", 'cat_folder' => "dnd-child-$dnd_t", 'cat_parent' => $cat_id));
+$dnd_child_id = $dnd_child['cat']->GetId();
+function fresh_file($id) { unset(WPFB_File::$cache[$id]); return WPFB_File::GetFile($id); }
+function fresh_cat($id) { unset(WPFB_Category::$cache[$id]); WPFB_Category::$cache_complete = false; return WPFB_Category::GetCat($id); }
+function cat_counts($id) { global $wpdb; return $wpdb->get_row($wpdb->prepare("SELECT cat_num_files, cat_num_files_total FROM {$wpdb->wpfilebase_cats} WHERE cat_id = %d", $id), ARRAY_A); }
+// success body is {"error":false,"cat_id":N} (cat_id = where the item ended up)
+function dnd_ok($body, $cat_id) { $j = json_decode($body, true); return is_array($j) && isset($j['error']) && $j['error'] === false && isset($j['cat_id']) && (int) $j['cat_id'] === (int) $cat_id; }
+
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'file', 'id' => $file->GetId(), 'new_cat_id' => $dnd_b_id)); // no nonce
+step('change-category without nonce is refused', $body === '-1' && (int) fresh_file($file->GetId())->file_category === $cat_id, "body=$body");
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'file', 'id' => $file->GetId(), 'new_cat_id' => $dnd_b_id, '_wpfb_nonce' => admin_nonce('wpfb-admin-ajax')));
+$f = fresh_file($file->GetId());
+step('change-category file -> folder', $code === 200 && dnd_ok($body, $dnd_b_id) && (int) $f->file_category === $dnd_b_id
+    && $f->file_path === "dnd-b-$dnd_t/smoke.txt" && is_file($f->GetLocalPath()) && cat_counts($dnd_b_id)['cat_num_files'] === '1' && cat_counts($cat_id)['cat_num_files'] === '1',
+    "body=$body path={$f->file_path} counts=" . json_encode(array(cat_counts($dnd_b_id), cat_counts($cat_id))));
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'file', 'id' => $file->GetId(), 'new_cat_id' => 0, '_wpfb_nonce' => admin_nonce('wpfb-admin-ajax')));
+$f = fresh_file($file->GetId());
+step('change-category file -> root', dnd_ok($body, 0) && (int) $f->file_category === 0 && $f->file_path === 'smoke.txt' && is_file($f->GetLocalPath()) && cat_counts($dnd_b_id)['cat_num_files'] === '0', "body=$body path={$f->file_path}");
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'file', 'id' => $file->GetId(), 'new_cat_id' => $cat_id, '_wpfb_nonce' => admin_nonce('wpfb-admin-ajax')));
+$f = fresh_file($file->GetId());
+step('change-category file back home', dnd_ok($body, $cat_id) && (int) $f->file_category === $cat_id && is_file($f->GetLocalPath()), "body=$body");
+
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'cat', 'id' => $dnd_b_id, 'new_cat_id' => $cat_id, '_wpfb_nonce' => admin_nonce('wpfb-admin-ajax')));
+$c = fresh_cat($dnd_b_id);
+step('change-category folder -> folder', dnd_ok($body, $cat_id) && (int) $c->cat_parent === $cat_id && $c->cat_path === $cat['cat']->GetLocalPathRel() . "/dnd-b-$dnd_t" && is_dir($c->GetLocalPath()), "body=$body path={$c->cat_path}");
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'cat', 'id' => $cat_id, 'new_cat_id' => $dnd_child_id, '_wpfb_nonce' => admin_nonce('wpfb-admin-ajax')));
+$c = fresh_cat($cat_id);
+step('change-category rejects moving a category into its descendant', strpos($body, 'sub-category of itself') !== false && (int) $c->cat_parent === 0, "body=$body");
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'cat', 'id' => $dnd_b_id, 'new_cat_id' => 0, '_wpfb_nonce' => admin_nonce('wpfb-admin-ajax')));
+$c = fresh_cat($dnd_b_id);
+step('change-category folder -> root', dnd_ok($body, 0) && (int) $c->cat_parent === 0 && $c->cat_path === "dnd-b-$dnd_t" && is_dir($c->GetLocalPath()), "body=$body path={$c->cat_path}");
+
+$off = WPFB_Admin::InsertFile(array('file_category' => $cat_id, 'file_remote_uri' => $base . '/license.txt', 'file_rename' => "offline-$dnd_t.txt"));
+@unlink($off['file']->GetLocalPath());
+list($code, , $body) = admin_post($ajax, array('wpfb_action' => 'change-category', 'type' => 'file', 'id' => $off['file']->GetId(), 'new_cat_id' => $dnd_b_id, '_wpfb_nonce' => admin_nonce('wpfb-admin-ajax')));
+$f = fresh_file($off['file']->GetId());
+step('change-category of an offline file updates the row', dnd_ok($body, $dnd_b_id) && (int) $f->file_category === $dnd_b_id && $f->file_path === "dnd-b-$dnd_t/offline-$dnd_t.txt", "body=$body path={$f->file_path}");
+$f->Remove();
+fresh_cat($dnd_child_id)->Delete();
+fresh_cat($dnd_b_id)->Delete();
+// fresh_cat()/fresh_file() replaced the cached objects; keep using the cached ones from here on
+// (the old $cat['cat'] still lists the deleted folders as children and would resurrect them).
+$cat['cat'] = fresh_cat($cat_id);
+$file = fresh_file($file->GetId());
 
 // 5. renders
 $html = do_shortcode('[wpfilebase tag=list id=' . $cat_id . ' /]');

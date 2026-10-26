@@ -20,6 +20,11 @@ class WPFB_TreeviewAdmin
                 background: #f1c40f;
             }
 
+            .treeview.dragover-target {
+                outline: 2px dashed #f1c40f;
+                outline-offset: 4px;
+            }
+
             .treeview .dragged {
                 opacity: 0.5;
                 background: #3498db;
@@ -67,6 +72,14 @@ class WPFB_TreeviewAdmin
                     wpfb_fbDragCat<?php echo $jss ?> = ok ? cat_id : 0;
                 }
 
+                // Over the tree itself (or a root-level row): the item would land at the root.
+                var base = +(wpfb_getFileBrowserParams('<?php echo $id ?>').base || 0);
+                if (hasWpfbItem) {
+                    if (cat_id == base && cur_id > 0)
+                        jQuery('#' + idp + 'cat-' + cur_id).removeClass('dragover-target');
+                    jQuery(this).toggleClass('dragover-target', ok && cat_id == base);
+                }
+
                 if (hasFiles)
                     return true;
 
@@ -81,30 +94,87 @@ class WPFB_TreeviewAdmin
 
 
 
+            <?php if ($drag_drop) { ?>
+            // Read a dragged item out of the dataTransfer: ['file'|'cat', id] or null.
+            function wpfb_fbDraggedItem<?php echo $jss ?>(dt) {
+                if (!wpfb_dtContains(dt, "application/x-wpfilebase-item") && !(wpfb_tvaUseDataText && wpfb_dtContains(dt, "Text")))
+                    return null;
+                var tid = wpfb_tvaUseDataText ? dt.getData("Text").substr("application/x-wpfilebase-item=".length).split('-') : dt.getData("application/x-wpfilebase-item").split('-');
+                return (tid && tid.length === 2 && +tid[1] > 0) ? tid : null;
+            }
+
+            // Move the dragged item (tid = ['file'|'cat', id]) into category newCatId (the browser's
+            // base = root) through the change-category action, then place its row in the tree.
+            function wpfb_fbMove<?php echo $jss ?>(tid, newCatId) {
+                var idp = wpfb_getFileBrowserIDP('<?php echo $id ?>');
+                var params = wpfb_getFileBrowserParams('<?php echo $id ?>');
+                var base = +(params.base || 0);
+                newCatId = +newCatId || 0;
+                var tree = jQuery("#<?php echo $id ?>").removeClass('dragover-target');
+                var dLi = jQuery('#' + idp + tid.join('-'));
+                var curLi = dLi.parent().closest('li[id^="' + idp + 'cat-"]');
+                var curCat = curLi.length ? +curLi.attr('id').substr((idp + 'cat-').length) : base;
+                var tLi = jQuery('#' + idp + 'cat-' + newCatId).removeClass('dragover-target');
+                wpfb_fbDragCat<?php echo $jss ?> = 0;
+                if (newCatId === curCat || (tid[0] === 'cat' && +tid[1] === newCatId))
+                    return; // already there, or dropped on itself: nothing to do
+                tLi.css({cursor: 'wait'});
+                jQuery.ajax({
+                    url: wpfbConf.ajurl, type: "POST", dataType: "json",
+                    data: {wpfb_action: "change-category", new_cat_id: newCatId, id: tid[1], type: tid[0], _wpfb_nonce: wpfbConf.nonce},
+                    success: function (data) {
+                        // A refused request (expired nonce, no permission) comes back as "-1", which
+                        // the JSON parser turns into a number: anything but an object is a failure.
+                        if (!data || 'object' !== typeof data || data.error) {
+                            alert(data && data.error ? data.error : '<?php echo esc_js(__('The move was refused. Your session may have expired: please reload the page and try again.', 'wp-filebase')) ?>');
+                            return;
+                        }
+                        // The server answers with the category it actually used: the root when the
+                        // target no longer exists (deleted in another tab).
+                        var catId = ('undefined' !== typeof data.cat_id) ? +data.cat_id : newCatId;
+                        var toRoot = (catId === base || catId === 0);
+                        var cLi = toRoot ? jQuery() : jQuery('#' + idp + 'cat-' + catId);
+                        var tUl = toRoot ? tree : cLi.children('ul').first();
+                        if (!toRoot && (cLi.hasClass('hasChildren') || !cLi.length)) {
+                            // never loaded: drop our copy, the (one-time) async load shows the moved row
+                            dLi.remove();
+                            jQuery('.hitarea', cLi).first().click();
+                        } else if (tUl.length) {
+                            dLi.appendTo(tUl);
+                            if (cLi.hasClass('expandable')) // loaded earlier but collapsed: open it
+                                jQuery('.hitarea', cLi).first().click();
+                        } else {
+                            dLi.remove();
+                        }
+                        <?php if (!empty($args['onCategoryChanged'])) echo $args['onCategoryChanged'] . '(tid, catId);'; ?>
+                    },
+                    complete: function () { tLi.css({cursor: ''}); }
+                });
+            }
+            <?php } ?>
+
             var wpfb_fbDOMModHandle<?php echo $jss ?> = function() {
                 wpfb_fbDOMModTimeout<?php echo $jss ?> = -1;
 
                 <?php if ($drag_drop) { ?>
-                jQuery("#<?php echo $id ?>").bind('dragover', function (e) {
-                    if(e.target.id != '<?php echo $id ?>')
-                        return;
-                    var params = wpfb_getFileBrowserParams('<?php echo $id ?>');
-                    wpfb_fbDragCat<?php echo $jss ?> = params.base || 0;
-                });
-
-
-
-
-                //jQuery("#<?php echo $id ?> li[id^='wpfb-cat-']:not([draggable]):not([id$='-0'])").bind('dragover', dragOverHandler);
-
                 jQuery("#<?php echo $id ?> li:not([draggable]):not([id$='-0'])")
                     .attr('draggable', 'true')
-                    .bind('dragend', function (e) {
+                    .on('dragend', function (e) {
                         jQuery(e.currentTarget).removeClass('dragged');
                     })
-                    .bind('dragstart', function (e) {
+                    .on('dragstart', function (e) {
+                        // Only the row this handler belongs to may start its drag. When the pointer
+                        // went down on a descendant <li> that is not (yet) draggable, the browser
+                        // makes this row the drag source (dragstart fires here, e.target is this row
+                        // or a draggable <img>/<a> below it) and the whole folder would move instead
+                        // of the child. Check both the event target and what is under the pointer.
+                        var oe = e.originalEvent || e, under = ('number' === typeof oe.clientX && (oe.clientX || oe.clientY)) ? document.elementFromPoint(oe.clientX, oe.clientY) : null;
+                        if (jQuery(e.target).closest('li')[0] !== this || (under && jQuery(under).closest('li')[0] !== this)) {
+                            e.preventDefault();
+                            return false;
+                        }
                         var li = jQuery(this), t = (li.attr('id').indexOf('-cat-') >= 0 ? 'cat' : 'file'), id = wpfb_fileBrowserTargetId(e, t);
- 
+
                         if (id >= 0) {
                             e.stopPropagation();
                             li.addClass('dragged');
@@ -124,67 +194,32 @@ class WPFB_TreeviewAdmin
                             }
                         }
                     })
-                    .bind('dragenter ', function(e) {
+                    .on('dragenter', function(e) {
                         // open category
                         var li = this;
-                        console.log('start', li.id);
                         li._openTimer = setTimeout(function() {
                             if (jQuery(li).hasClass('expandable'))
                                 jQuery('.hitarea', li).click();
                         }, 600);
                     })
-                    .bind('dragleave', function (e) {
+                    .on('dragleave', function (e) {
                         var li = this;
                         jQuery(li).removeClass('dragover-target');
                         wpfb_fbDragCat<?php echo $jss ?> = 0;
                         if(li._openTimer) {
-                            console.log('stop', li.id);
                             clearTimeout(li._openTimer);
                             li._openTimer = false;
                         }
                     })
-                    .bind('drop', function (e) {
-                        var li = jQuery(e.currentTarget), id = wpfb_fileBrowserTargetId(e, 'cat'), dt = e.originalEvent.dataTransfer;
-                        if (!wpfb_dtContains(dt, "application/x-wpfilebase-item") && !(wpfb_tvaUseDataText && wpfb_dtContains(dt, "Text")))
-                            return true;
-
+                    .on('drop', function (e) {
+                        var tid = wpfb_fbDraggedItem<?php echo $jss ?>(e.originalEvent.dataTransfer);
+                        if (!tid)
+                            return true; // not ours (e.g. files from the desktop: Plupload's)
+                        e.preventDefault();
                         e.stopPropagation();
-
-                        var idp = wpfb_getFileBrowserIDP('<?php echo $id ?>');
-
-                        var tid = wpfb_tvaUseDataText ? dt.getData("Text").substr("application/x-wpfilebase-item=".length).split('-') : dt.getData("application/x-wpfilebase-item").split('-');
-                        if (!tid || tid.length !== 2)
-                            return false;
-
-                        jQuery('#' + idp + 'cat-' + id).css({cursor: 'wait'}).removeClass('dragover-target');
-                        wpfb_fbDragCat<?php echo $jss ?> = 0;
-
-                        jQuery.ajax({
-                            url: wpfbConf.ajurl, type: "POST", dataType: "json",
-                            data: {wpfb_action: "change-category", new_cat_id: id, id: tid[1], type: tid[0]},
-                            success: (function (data) {
-                                if (!data.error) {
-                                    var dLi = jQuery('#' + idp + tid.join('-')); // the dragged
-                                    var tUl = jQuery('#' + idp + 'cat-' + id).children('ul').first();
-                                    var toRoot = (id === 0 || id == wpfb_getFileBrowserParams('<?php echo $id ?>').base);
-                                    if(tUl.length == 0 && toRoot) tUl = jQuery("#<?php echo $id ?>");
-                                    if (li.hasClass('expandable')) {
-                                        dLi.remove();
-                                        jQuery('.hitarea', li).click();
-                                    } else if (tUl.length) {
-                                        dLi.appendTo(tUl);
-                                    } else {
-                                        dLi.remove();
-                                    }
-                                    <?php if (!empty($args['onCategoryChanged'])) echo $args['onCategoryChanged'] . '(tid, id);'; ?>
-                                } else {
-                                    alert(data.error);
-                                }
-                            }),
-                            complete: (function () {
-                                jQuery('#' + idp + 'cat-' + id).css({cursor: ''});
-                            })
-                        });
+                        jQuery(this).removeClass('dragover-target');
+                        wpfb_fbMove<?php echo $jss ?>(tid, wpfb_fileBrowserTargetId(e, 'cat'));
+                        return false;
                     });
                 <?php } /* drag_drop */ ?>
                 jQuery("#<?php echo $id ?> a.add-file:not(.file-input)").each(function (i, el) {
@@ -210,20 +245,45 @@ class WPFB_TreeviewAdmin
 
             jQuery(document).ready(function () {
 
-                jQuery("#<?php echo $id ?>").bind('dragover', dragOverHandler);
+                jQuery("#<?php echo $id ?>").on('dragover', dragOverHandler);
 
                 wpfb_fbDragCat<?php echo $jss ?> = 0;
-                jQuery("#<?php echo $id ?>")
-                    .bind("DOMSubtreeModified", function (e) {
+                // Re-arm drag handles / inline add buttons whenever the tree changes (async loads,
+                // inline new category, uploads). Mutation events (DOMSubtreeModified) are gone from
+                // Chromium 127+, so observe the subtree instead; same 100 ms debounce as before.
+                var wpfb_fbTree<?php echo $jss ?> = document.getElementById('<?php echo $id ?>');
+                if (wpfb_fbTree<?php echo $jss ?> && 'undefined' !== typeof MutationObserver) {
+                    new MutationObserver(function () {
                         if (wpfb_fbDOMModTimeout<?php echo $jss ?> >= 0)
                             window.clearTimeout(wpfb_fbDOMModTimeout<?php echo $jss ?>);
                         wpfb_fbDOMModTimeout<?php echo $jss ?> = window.setTimeout(wpfb_fbDOMModHandle<?php echo $jss ?>, 100);
-                    })
+                    }).observe(wpfb_fbTree<?php echo $jss ?>, {childList: true, subtree: true});
+                }
+                jQuery("#<?php echo $id ?>")
                     <?php if ($drag_drop) { ?>
-                    .bind('dragleave', function (e) {
+                    .on('dragover', function (e) {
+                        // pointer over the tree background: the drop target is this browser's root
+                        if (e.target.id != '<?php echo $id ?>')
+                            return;
+                        var params = wpfb_getFileBrowserParams('<?php echo $id ?>');
+                        wpfb_fbDragCat<?php echo $jss ?> = params.base || 0;
+                    })
+                    .on('dragleave', function (e) {
                         var idp = wpfb_getFileBrowserIDP('<?php echo $id ?>');
                         jQuery('#' + idp + 'cat-' + wpfb_fbDragCat<?php echo $jss ?>).removeClass('dragover-target');
                         wpfb_fbDragCat<?php echo $jss ?> = 0;
+                        if (e.target.id == '<?php echo $id ?>')
+                            jQuery(this).removeClass('dragover-target');
+                    })
+                    .on('drop', function (e) {
+                        // Drop that no row handled: on the tree background, a placeholder or an
+                        // inline "add" row. The target is the enclosing folder, or the root.
+                        var tid = wpfb_fbDraggedItem<?php echo $jss ?>(e.originalEvent.dataTransfer);
+                        if (!tid)
+                            return true;
+                        e.preventDefault();
+                        wpfb_fbMove<?php echo $jss ?>(tid, wpfb_fileBrowserTargetId(e, 'cat'));
+                        return false;
                     })
                     .before('<' + 'div class="wpfb-drag-drop-hint">+ DRAG &amp; DROP enabled<' + '/div>');
                 <?php } /* drag_drop */ ?>

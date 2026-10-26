@@ -92,7 +92,7 @@ class WPFB_Category extends WPFB_Item
      */
     static function GetCat($id)
     {
-        $id = 0 + $id;
+        $id = (int) $id;
         if ($id > 0 && (isset(self::$cache[$id]) || WPFB_Category::GetCats("WHERE cat_id = $id"))) {
             return self::$cache[$id];
         }
@@ -169,13 +169,21 @@ class WPFB_Category extends WPFB_Item
         }
     }
 
-    function NotifyFileRemoved($file)
+    /**
+     * @param WPFB_File $file
+     * @param bool|null $direct whether $file was a direct child of this category; defaults to
+     *                          looking at $file->file_category, which is already the new category
+     *                          when a file is being moved (see WPFB_Item::ChangeCategoryOrName()).
+     */
+    function NotifyFileRemoved($file, $direct = null)
     {
         if (self::$no_bubble)
             return;
 
 
-        if ($file->file_category == $this->cat_id) {
+        if (is_null($direct))
+            $direct = ($file->file_category == $this->cat_id);
+        if ($direct) {
             $this->cat_num_files--;
         }
         $this->cat_num_files_total--;
@@ -240,6 +248,14 @@ class WPFB_Category extends WPFB_Item
 
         self::$cache_complete = false;
         unset(self::$cache[0 + $this->cat_id]);
+        // detach from every cached category's in-memory child list (the current parent and any
+        // former one it was linked under before a move), or a later GetChildCats() in the same
+        // request hands out a dead id: the category select rendered after a bulk delete crashed
+        // on it, and a parent's own Delete() would re-parent the ghost and recreate its folder.
+        foreach (self::$cache as $pc) {
+            if (!empty($pc->cat_childs) && isset($pc->cat_childs[0 + $this->cat_id]))
+                unset($pc->cat_childs[0 + $this->cat_id]);
+        }
 
         // delete the category
         @unlink($this->GetLocalPath());

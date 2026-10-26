@@ -28,7 +28,8 @@ class WPFB_Output
             'fb' => WPFB_Core::GetPostUrl(WPFB_Core::$settings->file_browser_post_id),
             'cm' => (int)$context_menu,
             'ajurl' => WPFB_Core::$ajax_url,
-            'ajurlpub' => WPFB_Core::$ajax_url_public
+            'ajurlpub' => WPFB_Core::$ajax_url_public,
+            'nonce' => is_user_logged_in() ? wp_create_nonce('wpfb-admin-ajax') : '', // for the state-changing admin AJAX actions
         );
 
         if ($context_menu) {
@@ -405,7 +406,7 @@ class WPFB_Output
     static function ParseSelOpts($opt_name, $sel_tags, $uris = false)
     {
         $outarr = array();
-        $opts = explode("\n", WPFB_Core::GetOpt($opt_name));
+        $opts = explode("\n", (string) WPFB_Core::GetOpt($opt_name)); // unset option => null
         if (!is_array($sel_tags))
             $sel_tags = explode('|', $sel_tags);
 
@@ -512,6 +513,8 @@ class WPFB_Output
                 $out .= '<option value="+0" class="add-cat">+ ' . __('Add Category', 'wp-filebase') . '</option>';
         } else {
             $cat = WPFB_Category::GetCat($root_cat_id);
+            if (!$cat) // gone (deleted earlier in this request)
+                return '';
             $can_add = $cat->CurUserCanAddFiles();
 
             $out .= '<option value="' . $root_cat_id . '"'

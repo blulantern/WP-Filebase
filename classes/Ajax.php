@@ -53,6 +53,13 @@ class WPFB_Ajax {
                 //'postbrowser' => '',
                 //rsync-browser
         );
+        // State-changing actions need the nonce PrintJS() hands out as wpfbConf.nonce (field
+        // _wpfb_nonce), so a logged-in admin's browser cannot be made to fire them from elsewhere.
+        $mutating = array('delete', 'change-category', 'new-cat', 'attach-file', 'set-user-setting', 'toggle-context-menu');
+        if (!empty($_REQUEST['wpfb_action']) && in_array($_REQUEST['wpfb_action'], $mutating, true)
+            && !check_ajax_referer('wpfb-admin-ajax', '_wpfb_nonce', false)) {
+            die('-1');
+        }
         self::dispatchAction($public_actions);
     }
 
@@ -244,6 +251,8 @@ class WPFB_Ajax {
         $cat = WPFB_Category::GetCat($args['new_cat_id']);
         if ($item && $item->CurUserCanEdit() && (!$cat || $cat->CurUserCanAddFiles())) {
             $res = $item->ChangeCategoryOrName($args['new_cat_id']);
+            if (empty($res['error'])) // where it ended up (root when the target no longer exists)
+                $res['cat_id'] = (int) $item->GetParentId();
             wp_send_json($res);
         } else {
             wp_send_json(array('error' => __("Sorry, you are not allowed to do that.")));
