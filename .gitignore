@@ -8,3 +8,4 @@
 /phpstan.neon
 /test-results
 /.composer-home
+/tests/e2e/.auth

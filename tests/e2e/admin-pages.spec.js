@@ -1,14 +1,8 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures');
 
 const PAGES = ['wpfilebase_manage', 'wpfilebase_files', 'wpfilebase_cats', 'wpfilebase_filebrowser', 'wpfilebase_css', 'wpfilebase_tpls', 'wpfilebase_sets'];
 
-test.beforeEach(async ({ page }) => {
-	await page.goto('/wp-login.php');
-	await page.fill('#user_login', process.env.WP_USER || 'blulantern');
-	await page.fill('#user_pass', process.env.WP_PASS);
-	await page.click('#wp-submit');
-	await expect(page).toHaveURL(/wp-admin/);
-});
+// Signed in by auth.setup.js (storageState in playwright.config.js).
 
 for (const slug of PAGES) {
 	test(`admin page ${slug} has no console errors`, async ({ page }) => {
