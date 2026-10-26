@@ -17,18 +17,33 @@ class WPFB_Sync
         wpfb_loadclass("Admin", "GetID3", "FileUtils", "Misc");
         require_once(ABSPATH . 'wp-admin/includes/file.php');
 
+        self::$error_log_file = WPFB_Core::GetLogFile('sync');
+        self::$debug_output = (!empty($_GET['output']) || !empty($_GET['debug']));
+    }
+
+    /**
+     * Prepare the process for a long scan: no time limit, more memory, and PHP errors captured
+     * into the sync log. Called by the scanning entry points (Sync(), ScanFile()) — never from
+     * InitClass(): merely loading this class on an ordinary admin request must not replace
+     * PHP's error and exception handlers, or a fatal in any admin page silently disappears
+     * into the sync log instead of reaching debug.log and WordPress' error screen.
+     */
+    static function BeginRun()
+    {
+        static $begun = false;
+        if ($begun)
+            return;
+        $begun = true;
+
         @ini_set('max_execution_time', '0');
         @set_time_limit(0);
-        self::$error_log_file = WPFB_Core::GetLogFile('sync');
         @ini_set("error_log", self::$error_log_file);
 
         set_error_handler(array(__CLASS__, 'CaptureError'));
         set_exception_handler(array(__CLASS__, 'CaptureException'));
         register_shutdown_function(array(__CLASS__, 'CaptureShutdown'));
 
-        if (self::$debug_output = (!empty($_GET['output'])
-            || !empty($_GET['debug']))
-        ) {
+        if (self::$debug_output) {
             @ini_set('display_errors', 1);
             @error_reporting(E_ALL);
         }
@@ -337,6 +352,7 @@ class WPFB_Sync
         $output = false
             )
     {
+        self::BeginRun();
         self::PrintDebugTrace();
 
         $output && self::UpdateMemBar();
@@ -863,6 +879,7 @@ class WPFB_Sync
         $forced_refresh_thumb = false
     )
     {
+        self::BeginRun(); // getID3 and thumbnailing are noisy; capture their notices as before
         $forced_refresh_thumb = $forced_refresh_thumb || ($file->file_rescan_pending > 1);
         $file->file_rescan_pending = max($file->file_rescan_pending, $forced_refresh_thumb ? 2 : 1);
 

@@ -16,10 +16,28 @@ function step($name, $ok, $detail = '') { global $fails; echo ($ok ? "PASS" : "F
 function http($url, $headers = array()) {
     $ch = curl_init($url);
     curl_setopt_array($ch, array(CURLOPT_RETURNTRANSFER => true, CURLOPT_HEADER => true, CURLOPT_HTTPHEADER => $headers));
-    $raw = curl_exec($ch); $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE); $hlen = curl_getinfo($ch, CURLINFO_HEADER_SIZE); curl_close($ch);
+    $raw = curl_exec($ch); $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE); $hlen = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
     return array($code, substr($raw, 0, $hlen), substr($raw, $hlen));
 }
 function site_url_for($url) { global $base; return str_replace(home_url(), $base, $url); }
+// Admin session for HTTP-level checks of the admin pages: mint the auth cookies for user 1.
+function admin_cookie_header() {
+    static $h = null;
+    if ($h === null) {
+        $exp = time() + DAY_IN_SECONDS;
+        $h = 'Cookie: ' . AUTH_COOKIE . '=' . wp_generate_auth_cookie(1, $exp, 'auth') . '; ' . LOGGED_IN_COOKIE . '=' . wp_generate_auth_cookie(1, $exp, 'logged_in');
+    }
+    return $h;
+}
+function admin_get($url) { return http(site_url_for($url), array(admin_cookie_header())); }
+function admin_post($url, array $fields) {
+    $ch = curl_init(site_url_for($url));
+    curl_setopt_array($ch, array(CURLOPT_RETURNTRANSFER => true, CURLOPT_HEADER => true, CURLOPT_HTTPHEADER => array(admin_cookie_header()),
+        CURLOPT_POST => true, CURLOPT_POSTFIELDS => $fields)); // array => multipart/form-data, like the browser
+    $raw = curl_exec($ch); $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE); $hlen = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    return array($code, substr($raw, 0, $hlen), substr($raw, $hlen));
+}
+function form_nonce($html, $field) { return preg_match('/name="' . preg_quote($field, '/') . '" value="([^"]+)"/', $html, $m) ? $m[1] : ''; }
 
 $log = WP_CONTENT_DIR . '/debug.log';
 file_put_contents($log, '');
@@ -32,6 +50,10 @@ $r = activate_plugin('wp-filebase/wp-filebase.php');
 step('activate', !is_wp_error($r), is_wp_error($r) ? $r->get_error_message() : '');
 wp_set_current_user(1);
 wpfb_loadclass('Core', 'Admin', 'File', 'Category', 'Sync', 'Output', 'Search', 'Compat');
+// Loading the Sync class must not hijack PHP's exception handler on an ordinary request:
+// a fatal in an admin page would otherwise vanish into the plugin's sync log instead of debug.log.
+$prev_handler = set_exception_handler(null);
+step('loading Sync leaves the exception handler alone', !(is_array($prev_handler) && ($prev_handler[0] ?? null) === 'WPFB_Sync'), is_array($prev_handler) ? implode('::', $prev_handler) : '');
 WPFB_Core::$settings = (object) get_option(WPFB_OPT_NAME);
 
 // 2. category
@@ -39,6 +61,45 @@ $cat = WPFB_Admin::InsertCategory(array('cat_name' => 'Smoke ' . time(), 'cat_fo
 step('create category', empty($cat['error']) && !empty($cat['cat']), $cat['error'] ?? '');
 if (empty($cat['cat'])) { echo "cannot continue without a category\n"; exit(1); }
 $cat_id = $cat['cat']->GetId();
+
+// 2b. the Categories admin page, over HTTP, exactly as the browser submits it (multipart, the
+//     "Custom Sort Order" box left blank the way the add form renders it).
+$cats_url = admin_url('admin.php?page=wpfilebase_cats');
+list($code, , $html) = admin_get($cats_url);
+$nonce = form_nonce($html, 'wpfb-cat-nonce');
+step('cats page renders add form', $code === 200 && strpos($html, 'id="addcat"') !== false && $nonce !== '', "code=$code");
+$http_cat_name = 'Smoke HTTP ' . time();
+list($code, , $html) = admin_post($cats_url, array('action' => 'addcat', 'cat_id' => '0', 'wpfb-cat-nonce' => $nonce,
+    'cat_name' => $http_cat_name, 'cat_folder' => '', 'cat_parent' => '0', 'cat_description' => '', 'cat_perm_explicit' => '0', 'cat_order' => '', 'submit' => 'Add New Category'));
+$http_cat = null;
+foreach (WPFB_Category::GetCats("WHERE cat_name = '" . esc_sql($http_cat_name) . "'") as $c) { $http_cat = $c; }
+step('cats page add (blank sort order)', $code === 200 && strpos($html, 'Category added.') !== false && $http_cat !== null, "code=$code len=" . strlen($html));
+list($code, , $html) = admin_post($cats_url, array('action' => 'addcat', 'cat_id' => '0', 'wpfb-cat-nonce' => 'deadbeef00',
+    'cat_name' => $http_cat_name . ' forged', 'cat_parent' => '0', 'cat_perm_explicit' => '0', 'cat_order' => '0'));
+$forged = WPFB_Category::GetCats("WHERE cat_name = '" . esc_sql($http_cat_name . ' forged') . "'");
+// The page handles its actions while rendering, after the admin header went out, so wp_die() cannot
+// change the status line any more: the rejection shows as WordPress' "link has expired" page.
+step('cats page rejects a bad nonce', count($forged) === 0 && ($code === 403 || stripos($html, 'expired') !== false), "code=$code");
+foreach ($forged as $c) { $c->Delete(); }
+if ($http_cat) {
+    list($code, , $html) = admin_get(add_query_arg(array('action' => 'editcat', 'cat_id' => $http_cat->GetId()), $cats_url));
+    $nonce = form_nonce($html, 'wpfb-cat-nonce');
+    step('cats page renders edit form', $code === 200 && strpos($html, 'id="editcat"') !== false && $nonce !== '', "code=$code");
+    list($code, , $html) = admin_post($cats_url, array('action' => 'updatecat', 'cat_id' => (string) $http_cat->GetId(), 'wpfb-cat-nonce' => $nonce,
+        'cat_name' => $http_cat_name . ' edited', 'cat_folder' => $http_cat->cat_folder, 'cat_parent' => (string) $cat_id, 'cat_description' => 'edited',
+        'cat_perm_explicit' => '1', 'cat_order' => '', 'submit' => 'Update'));
+    unset(WPFB_Category::$cache[$http_cat->GetId()]); WPFB_Category::$cache_complete = false; // this process cached the pre-update row
+    $edited = WPFB_Category::GetCat($http_cat->GetId());
+    step('cats page edit (blank sort order, new parent)', $code === 200 && strpos($html, 'Category updated.') !== false
+        && $edited && $edited->cat_name === $http_cat_name . ' edited' && (int) $edited->cat_parent === $cat_id && is_dir($edited->GetLocalPath()),
+        "code=$code parent=" . ($edited ? $edited->cat_parent : '?') . ' path=' . ($edited ? $edited->GetLocalPathRel() : '?'));
+    list($code, , $html) = admin_get($cats_url);
+    list($code, , $html) = admin_post($cats_url, array('deleteit' => 'Delete', 'delete' => array((string) $http_cat->GetId()), '_wpnonce' => form_nonce($html, '_wpnonce')));
+    WPFB_Category::$cache_complete = false; unset(WPFB_Category::$cache[$http_cat->GetId()]);
+    $gone = count(WPFB_Category::GetCats('WHERE cat_id = ' . (int) $http_cat->GetId())) === 0;
+    step('cats page bulk delete', $code === 200 && $gone, "code=$code");
+    if (!$gone) { $http_cat->Delete(); }
+}
 
 // 3. upload via admin API. InsertFile() only accepts is_uploaded_file() temp files for
 //    form uploads, so from the CLI we use the remote-URI branch (same validation, sideloads
