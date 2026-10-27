@@ -32,6 +32,10 @@
 - The state-changing admin AJAX actions (`delete`, `change-category`, `new-cat`, `attach-file`,
   `set-user-setting`, `toggle-context-menu`) require a nonce (`wpfbConf.nonce`, field `_wpfb_nonce`).
 - PHP 8.1 deprecations: `explode()` on a null sort string / unset option, `usleep()` with a float.
+- `Undefined array key "post_type"` warning (`Core.php`, `ParseQuery()`) on nearly every front-end
+  request: the `parse_query` hook read `query_vars['post_type']`, which WordPress only sets when the
+  query asked for a post type. The file-page check now also recognises a list of post types, as REST
+  and block queries pass them.
 
 ### Tests
 - `tests/e2e/filebrowser-dnd.spec.js` drives real HTML5 drags in the admin File Browser (arming
