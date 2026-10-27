@@ -395,7 +395,7 @@ class WPFB_Ajax {
                         wpfb_ajax_die(__('You do not have permission to upload files.'));
             }
         } else {
-            if (!WPFB_Core::CurUserCanUpload() && !$parent_cat && !$parent_cat->CurUserCanAddFiles())
+            if (!WPFB_Core::CurUserCanUpload() && (!$parent_cat || !$parent_cat->CurUserCanAddFiles()))
                 wpfb_ajax_die(__('You do not have permission to upload files.'));
 
             check_admin_referer(WPFB . '-async-upload');
@@ -471,7 +471,7 @@ class WPFB_Ajax {
 
 	 private static function parseFilename($args) {
 		 wpfb_loadclass('Admin');
-		 wp_send_json(WPFB_Admin::ParseFileNameVersion($args['filename']));		 
+		 wp_send_json(WPFB_Admin::ParseFileNameVersion(isset($args['filename']) ? $args['filename'] : ''));		 
 		 exit;
 	 }
 }

@@ -444,7 +444,7 @@ class WPFB_Item
             }
         }
 
-        self::$tpl_uid = (defined('DOING_AJAX') && DOING_AJAX) ? ($this->GetId() . '' . (round(microtime() * 1000) % 1000)) : (self::$tpl_uid + 1);
+        self::$tpl_uid = (defined('DOING_AJAX') && DOING_AJAX) ? ($this->GetId() . '' . (round(microtime(true) * 1000) % 1000)) : (self::$tpl_uid + 1);
 
         if ($extra_data && !is_object($extra_data))
             $extra_data = (object)$extra_data;

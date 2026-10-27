@@ -408,7 +408,7 @@ class WPFB_Output
         $outarr = array();
         $opts = explode("\n", (string) WPFB_Core::GetOpt($opt_name)); // unset option => null
         if (!is_array($sel_tags))
-            $sel_tags = explode('|', $sel_tags);
+            $sel_tags = explode('|', (string) $sel_tags);
 
         for ($i = 0; $i < count($opts); $i++) {
             $opt = explode('|', trim($opts[$i]));

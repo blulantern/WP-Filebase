@@ -276,7 +276,7 @@ class WPFB_File extends WPFB_Item
     // gets the extension of the file (including .)
     function GetExtension()
     {
-        return strtolower(strrchr($this->file_name, '.'));
+        return strtolower(strrchr((string) $this->file_name, '.')); // null on an unsaved file
     }
 
     function GetType()

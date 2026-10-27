@@ -53,7 +53,7 @@ class WPFB_AdminGuiCats {
         <?php
         switch ($action) {
             case 'editcat':
-                $cat_id = (int) $_GET['cat_id'];
+                $cat_id = isset($_GET['cat_id']) ? (int) $_GET['cat_id'] : 0;
                 $file_category = WPFB_Category::GetCat($cat_id);
                 if (is_null($file_category) || !$file_category->CurUserCanEdit())
                     wp_die(__('Cheatin&#8217; uh?'));

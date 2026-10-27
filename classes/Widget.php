@@ -33,6 +33,7 @@ class WPFB_UploadWidget extends WP_Widget {
 	function widget( $args, $instance ) {
 		if(!WPFB_Core::$settings->frontend_upload)
 			return;
+		$instance = wp_parse_args((array) $instance, array('title' => '', 'category' => 0, 'overwrite' => 0, 'attach' => 0));
 		wpfb_loadclass('File', 'Category', 'Output');
 		
 		$instance['category'] = empty($instance['category']) ? 0 : (int)$instance['category'];
@@ -73,6 +74,7 @@ class WPFB_AddCategoryWidget extends WP_Widget {
 	function widget( $args, $instance ) {			
 		if(!current_user_can('upload_files'))
 			return;
+		$instance = wp_parse_args((array) $instance, array('title' => ''));
 
 		wpfb_loadclass('File', 'Category', 'Output');
 		
@@ -112,7 +114,7 @@ class WPFB_AddCategoryWidget extends WP_Widget {
 	function form( $instance ) {
 		if(!isset($instance['title'])) $instance['title'] = __('Add File Category','wp-filebase');
 		?><div>
-			<p><label for="<?php echo $this->get_field_id('title'); ?>"><?php _e('Title:'); ?> <input type="text" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" value="<?php echo esc_attr($instance['title']); ?>" /></label></p>
+			<p><label for="<?php echo $this->get_field_id('title'); ?>"><?php _e('Title:'); ?> <input type="text" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" value="<?php echo esc_attr(isset($instance['title']) ? $instance['title'] : ''); ?>" /></label></p>
 		</div><?php
 	}
 }
@@ -124,6 +126,7 @@ class WPFB_SearchWidget extends WP_Widget {
 	}
 
 	function widget( $args, $instance ) {
+		$instance = wp_parse_args((array) $instance, array('title' => '', 'placeholder' => ''));
 		wpfb_loadclass('File', 'Category', 'Output');
 		
         extract( $args );
@@ -163,11 +166,11 @@ class WPFB_SearchWidget extends WP_Widget {
 		<div>
 		<p>
 			<label for="<?php echo $this->get_field_id('title'); ?>"><?php _e('Title:'); ?></label>
-			<input type="text" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" value="<?php echo esc_attr($instance['title']); ?>" />
+			<input type="text" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" value="<?php echo esc_attr(isset($instance['title']) ? $instance['title'] : ''); ?>" />
 		</p>
 		<p>
 			<label for="<?php echo $this->get_field_id('placeholder'); ?>"><?php _e('Placeholder:'); ?></label>
-			<input type="text" id="<?php echo $this->get_field_id('placeholder'); ?>" name="<?php echo $this->get_field_name('placeholder'); ?>" value="<?php echo esc_attr(@$instance['placeholder']); ?>" />
+			<input type="text" id="<?php echo $this->get_field_id('placeholder'); ?>" name="<?php echo $this->get_field_name('placeholder'); ?>" value="<?php echo esc_attr(isset($instance['placeholder']) ? $instance['placeholder'] : ''); ?>" />
 		</p>
 		</div>
 		<?php
@@ -181,6 +184,7 @@ class WPFB_CatListWidget extends WP_Widget {
 	}
 
 	function widget( $args, $instance ) {
+		$instance = wp_parse_args((array) $instance, array('title' => '', 'hierarchical' => false, 'root-cat' => 0, 'sort-by' => 'cat_name', 'sort-asc' => true));
 		
 		// if no filebrowser this widget doosnt work
 		if(WPFB_Core::$settings->file_browser_post_id <= 0)
@@ -242,6 +246,8 @@ class WPFB_FileListWidget extends WP_Widget {
 
 	function widget( $args, $instance ) {
 		wpfb_loadclass('File', 'Category', 'Output');
+		$instance = wp_parse_args((array) $instance, array('title' => '', 'cat' => 0, 'limit' => 10, 'sort-by' => 'file_hits', 'sort-asc' => false, 'tpl' => '<a href="%file_post_url%">%file_display_name%</a> (%file_hits%)'));
+		if (empty($instance['tpl_parsed'])) { wpfb_loadclass('TplLib'); $instance['tpl_parsed'] = WPFB_TplLib::Parse($instance['tpl']); }
 		
         extract( $args );
         $title = apply_filters('widget_title', $instance['title']);		

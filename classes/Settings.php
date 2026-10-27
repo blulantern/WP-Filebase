@@ -41,7 +41,7 @@ static function Schema()
 		$folder_icons[] = array('path' => str_replace(self::cleanPath(WP_CONTENT_DIR),'',$fif),'url' => str_replace(self::cleanPath(WP_CONTENT_DIR),WP_CONTENT_URL,$fif));
 
 
-	$isApache = stripos($_SERVER["SERVER_SOFTWARE"], 'Apache') !== false;
+	$isApache = stripos(isset($_SERVER['SERVER_SOFTWARE']) ? $_SERVER['SERVER_SOFTWARE'] : '', 'Apache') !== false;
 
 
 	if(!$isApache) {
