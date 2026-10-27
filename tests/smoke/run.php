@@ -44,6 +44,12 @@ function admin_post($url, array $fields) {
     $raw = curl_exec($ch); $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE); $hlen = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
     return array($code, substr($raw, 0, $hlen), substr($raw, $hlen));
 }
+function anon_post($url, array $fields) {
+    $ch = curl_init(site_url_for($url));
+    curl_setopt_array($ch, array(CURLOPT_RETURNTRANSFER => true, CURLOPT_HEADER => true, CURLOPT_POST => true, CURLOPT_POSTFIELDS => $fields));
+    $raw = curl_exec($ch); $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE); $hlen = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    return array($code, substr($raw, 0, $hlen), substr($raw, $hlen));
+}
 function form_nonce($html, $field) { return preg_match('/name="' . preg_quote($field, '/') . '" value="([^"]+)"/', $html, $m) ? $m[1] : ''; }
 
 $log = WP_CONTENT_DIR . '/debug.log';
@@ -249,6 +255,43 @@ if ($imgf) {
 $where = WPFB_Search::SearchWhereSql(false, "smo* -zzz o'neil_1%");
 $n = $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->wpfilebase_files WHERE $where");
 step('search sql executes', $wpdb->last_error === '' && $n !== null, $wpdb->last_error);
+
+// 8b. warning sweep. PHP 8 logs as warnings what PHP 7 swallowed as "undefined index" notices, so
+//     every admin screen, the read-only AJAX actions, the public endpoints and widgets with bare
+//     instances are driven the way a browser reaches them; step 10 then fails on any plugin line
+//     that lands in debug.log.
+$fid = $file->GetId();
+$screens = array('index.php', 'admin.php?page=wpfilebase_manage', 'admin.php?page=wpfilebase_files', 'admin.php?page=wpfilebase_files&s=smoke',
+    'admin.php?page=wpfilebase_files&action=addfile', "admin.php?page=wpfilebase_files&action=editfile&file_id=$fid", 'admin.php?page=wpfilebase_files&action=editfile',
+    'admin.php?page=wpfilebase_cats', "admin.php?page=wpfilebase_cats&action=editcat&cat_id=$cat_id", 'admin.php?page=wpfilebase_filebrowser',
+    'admin.php?page=wpfilebase_css', 'admin.php?page=wpfilebase_tpls', 'admin.php?page=wpfilebase_tpls&action=edit&type=list&tpl=default',
+    'admin.php?page=wpfilebase_tpls&action=edit&type=file&tpl=default', 'admin.php?page=wpfilebase_sets');
+$bad = array();
+foreach ($screens as $s) { list($code) = admin_get(admin_url($s)); if ($code !== 200) $bad[] = "$s=$code"; }
+step('admin screens respond 200', count($bad) === 0, implode(' ', $bad));
+$aj = admin_url('admin-ajax.php?action=wpfilebase');
+$ajax = array("wpfb_action=fileinfo&id=$fid", "wpfb_action=catinfo&id=$cat_id", 'wpfb_action=tree', "wpfb_action=tree&root=cat-$cat_id&idp=wpfb-",
+    'wpfb_action=tpl-sample&type=file&tpl=%25file_display_name%25', 'wpfb_action=parse-filename&filename=Report-v1.2.0-0-abc.pdf', 'wpfb_action=parse-filename',
+    'wpfb_action=usersearch&name_startsWith=bl', 'wpfb_action=postbrowser-main&post=1&inp_id=x&tit_id=y');
+$bad = array();
+foreach ($ajax as $q) { list($code) = admin_get("$aj&$q"); if ($code !== 200) $bad[] = "$q=$code"; }
+step('admin ajax read-only actions respond 200', count($bad) === 0, implode(' ', $bad));
+list($code) = http($base . '/?wpfilebase_ajax=1&wpfb_action=tree');
+step('public tree 200', $code === 200, "code=$code");
+// An anonymous upload POST with no category used to call a method on null (HTTP 500); it is a refusal.
+list($code, $hdr, $body) = anon_post($base . '/?wpfilebase_ajax=1&wpfb_action=upload', array('x' => '1'));
+step('anonymous upload without category is refused, not a fatal', $code === 200 && stripos($body, 'permission') !== false, "code=$code " . substr(strip_tags($body), 0, 80));
+list($code, $hdr, $body) = anon_post($base . '/?wpfilebase_ajax=1&wpfb_action=upload', array('cat_id' => $cat_id));
+step('anonymous upload into a category is refused', $code !== 500 && strpos($body, '"tmp_name"') === false, "code=$code " . substr(strip_tags($body), 0, 80));
+// A relative Referer header parses without a host.
+list($code) = http(site_url_for($file->GetUrl()), array('Referer: relative/path'));
+step('download with relative referer handled', $code === 200 || $code === 403, "code=$code");
+$bad = array();
+foreach (array('WPFB_UploadWidget', 'WPFB_AddCategoryWidget', 'WPFB_SearchWidget', 'WPFB_CatListWidget', 'WPFB_FileListWidget') as $w) {
+    ob_start(); the_widget($w, array()); the_widget($w, array('cat' => $cat_id, 'title' => 'T')); $out = ob_get_clean();
+    if (stripos($out, 'database error') !== false) $bad[] = $w;
+}
+step('widgets render with bare instances', count($bad) === 0, implode(' ', $bad));
 
 // 9. deactivate / reactivate
 deactivate_plugins('wp-filebase/wp-filebase.php');

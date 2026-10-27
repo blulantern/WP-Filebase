@@ -284,7 +284,7 @@ class WPFB_AdminGuiSettings {
 									if(!empty($field_data['placeholder']))
 										echo ' placeholder="'.$field_data['placeholder'].'"';
 
-									if($field_data['disabled'])
+									if (!empty($field_data['disabled']))
 										echo ' disabled="disabled" ';
 										
 									echo $style_class . ' />';

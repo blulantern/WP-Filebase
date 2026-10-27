@@ -493,6 +493,7 @@ class WPFB_Admin {
 	}
 
 	static function ParseFileNameVersion($file_name, $file_version = null) {
+		$file_name = (string) $file_name;
 		$fnwv = substr($file_name, 0, strrpos($file_name, '.')); // remove extension
 		if (empty($file_version)) {
 			$matches = array();
