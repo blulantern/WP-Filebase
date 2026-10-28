@@ -25,7 +25,7 @@ if (is_string($wp_tests) && $wp_tests !== '' && is_dir($wp_tests)) {
 // ---- Unit mode -------------------------------------------------------------
 error_reporting(E_ALL); // the CLI php.ini masks E_DEPRECATED; the suite must see PHP 8 deprecations
 define('WPFB', 'wpfb');
-define('WPFB_VERSION', '0.4.0-test');
+define('WPFB_VERSION', '0.4.1-test');
 define('WPFB_PLUGIN_ROOT', dirname(__DIR__) . '/');
 define('WPFB_OPT_NAME', 'wpfilebase');
 define('WPFB_PLUGIN_NAME', 'WP-Filebase');

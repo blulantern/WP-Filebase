@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.1 — 2026-10-28
 
 ### Fixed
 - Categories admin page: adding or editing a category with the "Custom Sort Order" box left blank

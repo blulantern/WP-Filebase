@@ -5,7 +5,7 @@ Tags: filebase, filemanager, file, files, manager, upload, download, downloads, 
 Requires at least: 6.6
 Requires PHP: 8.1
 Tested up to: 7.1
-Stable tag: 0.4.0
+Stable tag: 0.4.1
 Demo link: http://demo.wpfilebase.com/
 
 
@@ -130,7 +130,9 @@ Goto WP-Filebase Settings and disable Permalinks under "Download". Try to disabl
 
 == Changelog ==
 
-= Unreleased =
+= 0.4.1 =
+* Fixed: Categories admin page add/edit with a blank sort order (PHP 8 TypeError); add, update and bulk delete verify their nonces
+* Fixed: loading the Sync class no longer replaces PHP's error handlers outside a scan
 * Fixed: File Browser drag & drop in current browsers (Chromium 127+ removed mutation events); rows loaded on expand are draggable again
 * Fixed: dragging a freshly loaded row could move its parent folder instead
 * Added: drag items back out to the root (drop on the tree background or its "+ Add" row); no-op drops are ignored
@@ -138,6 +140,9 @@ Goto WP-Filebase Settings and disable Permalinks under "Download". Try to disabl
 * Fixed: a deleted category lingered in its parent's child list (crash in the category select, folder recreated)
 * Security: state-changing admin AJAX actions require a nonce
 * Fixed: PHP 8.1 deprecations (explode on null, usleep with a float)
+* Fixed: "Undefined array key post_type" warning on front-end requests, and the remaining PHP 7 undefined-index notices PHP 8 logs as warnings
+* Fixed: widgets rendered with a bare instance (database error in the file list widget)
+* Fixed: anonymous upload without a category caused an HTTP 500
 
 = 0.4.0 =
 * PHP 8.1-8.5 and WordPress 6.6-7.x compatibility fork of 0.3.4.24; behaviour, data model and templates unchanged (see CHANGELOG.md)
