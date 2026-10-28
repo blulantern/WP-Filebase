@@ -463,7 +463,7 @@ WPFB_Admin::PrintAdminSchemeCss();
         <tr class="form-field">
             <th scope="row" valign="top"><label for="file_tags"><?php _e('Tags') ?></label></th>
             <td colspan="3"><input name="file_tags" id="file_tags" type="text"
-                                   value="<?php echo esc_attr(trim($file->file_tags, ',')); ?>"
+                                   value="<?php echo esc_attr(trim((string) $file->file_tags, ',')); ?>"
                                    size="<?php echo ($in_editor || $in_widget) ? 20 : 40 ?>" maxlength="250"
                                    autocomplete="off"/></td>
         </tr>

@@ -49,7 +49,7 @@ static function Display()
 				else 
 					wp_die('No files to edit.');
 			} else {
-				$file = WPFB_File::GetFile($_GET['file_id']);
+				$file = WPFB_File::GetFile(isset($_GET['file_id']) ? (int) $_GET['file_id'] : 0);
 				if(is_null($file) || !$file->CurUserCanEdit())
 					wp_die(__('You do not have the permission to edit this file!','wp-filebase'));
 				WPFB_Admin::PrintForm('file', $file);

@@ -209,7 +209,10 @@ class WPFB_Core
 
         //print_r($query);
 
-        $filepage_query = ($query->query_vars['post_type'] == 'wpfb_filepage' || isset($query->tax_query->queried_terms['wpfb_file_category']));
+        // 'post_type' is only present when the query asked for one (WP_Query::fill_query_vars() does
+        // not add it), so the main query of most pages has no such key; it may also be a list of types.
+        $post_type = isset($query->query_vars['post_type']) ? $query->query_vars['post_type'] : '';
+        $filepage_query = in_array('wpfb_filepage', (array) $post_type, true) || isset($query->tax_query->queried_terms['wpfb_file_category']);
 
         if (WPFB_Core::$settings->search_integration && !empty($wp_query->query_vars['s'])) {
             wpfb_loadclass('Search');

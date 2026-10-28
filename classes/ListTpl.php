@@ -4,8 +4,8 @@
 class WPFB_ListTpl {
 	
 	var $tag;
-	var $header;
-	var $footer;
+	var $header = '';
+	var $footer = '';
 	var $file_tpl_tag;
 	var $cat_tpl_tag;
 	var $current_list = null;

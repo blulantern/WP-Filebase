@@ -32,8 +32,27 @@
 - The state-changing admin AJAX actions (`delete`, `change-category`, `new-cat`, `attach-file`,
   `set-user-setting`, `toggle-context-menu`) require a nonce (`wpfbConf.nonce`, field `_wpfb_nonce`).
 - PHP 8.1 deprecations: `explode()` on a null sort string / unset option, `usleep()` with a float.
+- `Undefined array key "post_type"` warning (`Core.php`, `ParseQuery()`) on nearly every front-end
+  request: the `parse_query` hook read `query_vars['post_type']`, which WordPress only sets when the
+  query asked for a post type. The file-page check now also recognises a list of post types, as REST
+  and block queries pass them.
+- Sweep of the remaining PHP 7 "undefined index" notices that PHP 8 logs as warnings or deprecations,
+  found by driving every admin screen, AJAX action, public endpoint, shortcode, widget and template:
+  the add-file form (`GetExtension()` / tags field on an unsaved file), every settings field
+  (`disabled`), the templates page and its "add" form (null header/footer), the public category tree
+  (`microtime()` string arithmetic in `GenTpl()`), `parse-filename` without a name, `editfile` /
+  `editcat` without an id, the multi-select template option, `SERVER_SOFTWARE` on the CLI, a
+  `Referer` without a host, and widgets rendered with a bare instance (Legacy Widget previews).
+- File list widget rendered with a bare instance ran `ORDER BY DESC` (a database error on the page);
+  every widget now fills in its defaults before rendering.
+- An anonymous upload POST to the public AJAX endpoint without a category called a method on null
+  (HTTP 500). The permission check now reads as intended: refuse unless the user may upload globally
+  or the target category lets them add files.
 
 ### Tests
+- `tests/smoke/run.php` section 8b drives every admin screen, the read-only admin AJAX actions, the
+  public tree and upload endpoints, a download with a relative referer and all widgets with bare
+  instances; the existing `debug.log clean` step fails on anything the plugin logs.
 - `tests/e2e/filebrowser-dnd.spec.js` drives real HTML5 drags in the admin File Browser (arming
   after expand, parent-folder guard, into a folder and back to the root, sibling no-op, stale
   target, upload through a folder's "+ Add File") against fixtures from `tests/e2e/fixture.php`.

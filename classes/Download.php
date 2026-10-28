@@ -14,7 +14,7 @@ class WPFB_Download
         }
 
         $referer = @parse_url($_SERVER['HTTP_REFERER']);
-        $referer = $referer['host'];
+        $referer = isset($referer['host']) ? $referer['host'] : '';
 
         $allowed_referers   = explode("\n",
             WPFB_Core::$settings->allowed_referers);
@@ -26,7 +26,7 @@ class WPFB_Download
             }
 
             $ar_host = @parse_url($ar);
-            $ar_host = $ar_host['host'];
+            $ar_host = isset($ar_host['host']) ? $ar_host['host'] : '';
             if (@strpos($referer, $ar) !== false
                 || @strpos($referer, $ar_host) !== false
             ) {
